@@ -76,6 +76,8 @@ count).
 | Redux's dungeon mini-maps and map dots are for the original dungeons | Left out; instead each seed's own are moved 20 tiles right (`+$14` on each screen address, `+$A0` on each dot), after a parser checks every list |
 | Link's Level 3 palette tweak | Left out: Reloaded picks its own dungeon palettes |
 | The HUD's icons and hearts are in Redux's whole-bank graphics | Ten tiles are copied, into bank 2 and Reloaded's tile copies; each tile block has its own anchor |
+| Redux's "TRIFORCE OF WISDOM" caption: Reloaded draws the caption its own way, so "OF WISDOM" landed on "TRIFORCE" | Left out |
+| The subscreen says "SAVE: UP+A"; Reloaded's save takes Up+A on controller 2 or Up+Select+A on controller 1 | Reloaded's check (bank 5 `$AD2A`, `$AD2C`) now takes Up+A on controller 1, as in Redux |
 | The arrow-drop routine runs from RAM, in a part of bank 1 the mirrored seeds fill | A RAM routine area: the power-on stub copies bank 1 `$9EC4` to RAM `$7FA0-$7FBF`, which nothing else uses |
 
 ## Keeping up with Redux

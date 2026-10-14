@@ -146,6 +146,9 @@ def hud_subscreen_edits(work, seed_dir, features):
     return [
         # Link's Level 3 palette: Reloaded picks its own dungeon palettes.
         (r"%org\(\$9607,6\)[^\n]*\n\tdb \$0F,\$29,\$27,\$17[^\n]*\n", ""),
+        # "TRIFORCE OF WISDOM": Reloaded draws the caption its own way, so
+        # moving "TRIFORCE" never takes effect and "OF WISDOM" lands on it.
+        (r"; Change \"TRIFORCE\" for \"TRIFORCE OF WISDOM\".*?\tdw triforce_outline\n", ""),
     ]
 
 
@@ -161,6 +164,10 @@ def hud_extra(work, redux):
     for t in [0x59] + list(range(0x61, 0x67)):
         (work / f"tile{t:02X}.bin").write_bytes(b[0x500 + (t - 0x50) * 16:0x500 + (t - 0x4F) * 16])
         asm.append(f'%org(${0x8C7F + (t - 0x50) * 16:04X},2)\n\tincbin "tile{t:02X}.bin"')
+    # The subscreen says "SAVE: UP+A". Reloaded's own save check (bank 5
+    # $AD1F) takes Up+A on controller 2 or Up+Select+A on controller 1; make
+    # controller 1's plain Up+A, as in Redux.
+    asm.append("%org($AD2A,5)\n\tdb $88\n%org($AD2C,5)\n\tdb $88")
     for t in (0xF2, 0xF7, 0xF9):
         (work / f"tile{t:02X}.bin").write_bytes(c[(t - 0xF2) * 16:(t - 0xF1) * 16])
         asm.append(f'%org(${0x8E7F + (t - 0xF2) * 16:04X},2)\n\tincbin "tile{t:02X}.bin"')
@@ -270,7 +277,9 @@ RemuxCopyStub:
 # need a RAM routine assemble it there (see arrows_edits).
 # Glue writes into Reloaded's own code: (bank, address, seed byte expected).
 GLUE_SITES = [(1, 0x8D31, 0x80), (1, 0x8D37, 0x00), (15, 0xE902, 0x00), (15, 0xE903, 0x8D),
-              (15, 0xE997, 0x00), (15, 0xE998, 0x8D)]
+              (15, 0xE997, 0x00), (15, 0xE998, 0x8D),
+              # hud-subscreen: Reloaded's save check, and #$A8 -> and #$88 (Up+A)
+              (5, 0xAD2A, 0xA8), (5, 0xAD2C, 0xA8)]
 
 # ------------------------------------------------------------------ helpers
 
