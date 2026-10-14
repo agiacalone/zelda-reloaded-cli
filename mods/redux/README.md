@@ -117,7 +117,8 @@ and pass a new game, a death, a save and a reload in FCEUX:
 | `fix-bait`, `fix-candle`, `fix-cave-timer`, `fix-level1-door`, `fix-keyhole`, `fix-beam`, `fix-leave-cave`, `fix-scroll` | `bugfixes/*.asm` | Redux's eight bug fixes |
 | `sword-draw`, `sword-swing` | `gameplay/sword_*.asm` | The diagonal sword swing |
 | `item-toggle` | `gameplay/item_toggle.asm` | Select switches the B item instead of pausing |
-| `copy-erase` | `menus/menu_tweaks.asm` | Redux's file screen: copy and erase files; a copy takes the saved map along (one edit: the map's new address) |
+| `dungeon-music` | `music/dungeon_music.asm` | Four dungeon themes: levels 1 and 5 the original, 2 and 6 A New Light, 3 and 7 Perils of Darkness, 4 and 8 Triforce Power |
+| `copy-erase` | `menus/menu_tweaks.asm` | Redux's file screen: copy and erase files; a copy takes the saved map along (edits: the map's new address, and the game-over heart stays at X `$40`, because Redux's caution screen that moves the menu text is not ported) |
 
 Copy/Erase looked broken twice (names never saved; then existing files shown as
 empty). Both times the cause was the automap's bank 2 block sitting on Copy/Erase's
@@ -180,6 +181,5 @@ Run it by hand with `mods/redux/upstream-check -n` to print the result without n
 
 ## Next
 
-- Dungeon music (on hold: wrong music in dungeons on hardware)
 - `graphics-overworld`, tested in play
 - `zelda-rando gen --mod redux:FEATURE`

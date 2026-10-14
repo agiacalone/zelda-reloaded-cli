@@ -164,7 +164,11 @@ def copy_erase_edits(work, seed_dir, features):
     """Redux's Copy/Erase file screen. It copies a file's saved map too:
     follow the map to its Remuxed address."""
     return [(r"lda \$7F60,x(\t\t; Copy automap data to temp save)", r"lda $7FC0,x\1"),
-            (r"sta \$7F60,y", r"sta $7FC0,y")]
+            (r"sta \$7F60,y", r"sta $7FC0,y"),
+            # Redux moves the game-over heart right ($54) to match its caution
+            # screen, which moves the menu text. That screen is not ported, so
+            # the text stays and the heart must too ($40), or it covers "CO".
+            (r"%org\(\$8AE5,5\)[^\n]*\n\tdb \$54[^\n]*\n", "")]
 
 
 def hud_subscreen_edits(work, seed_dir, features):
@@ -288,12 +292,13 @@ FEATURES = {
     "fix-scroll": ("code/bugfixes/overworld_scroll_timing.asm", no_edits, no_extra),
     "sword-draw": ("code/gameplay/sword_draw.asm", no_edits, no_extra),
     "sword-swing": ("code/gameplay/sword_swing.asm", no_edits, no_extra),
+    "dungeon-music": ("code/music/dungeon_music.asm", no_edits, no_extra),
 }
 # On hold: they build safely but break name registration on a Reloaded seed.
-# On hold: builds safely and passes FCEUX tests, but dungeon music plays wrong
-# on hardware (heard on the Steam Deck, 2026-10-14).
-#   dungeon-music (code/music/dungeon_music.asm): hooks the music sequencer in
-#               bank 0 and picks songs by the level number at $10.
+# dungeon-music: Redux's design gives dungeons four themes (levels 1/5 the
+# original, 2/6 A New Light, 3/7 Perils of Darkness, 4/8 Triforce Power). The
+# notes match Redux's build frame for frame in FCEUX and were checked by ear on
+# the Steam Deck (2026-10-14); an earlier "wrong music" report was this design.
 
 
 def redux_order(redux, features):
