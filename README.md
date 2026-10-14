@@ -1,9 +1,9 @@
-# zelda-reloaded-cli
+# zelda-remuxed
 
 [Legend of Zelda Reloaded Randomizer](https://www.reloadedretro.com/games/zelda) 1.0.98
 by MetalMachine is a randomizer for the NES Zelda that can generate a whole new
 overworld and new dungeons. It is a Windows program with a graphical interface.
-zelda-reloaded-cli runs it headless on Linux, so you can make seeds from a script,
+zelda-remuxed runs it headless on Linux, so you can make seeds from a script,
 a server, or a cron job.
 
 The tool does not re-implement the randomizer. A small C# driver loads the app's own
@@ -44,8 +44,8 @@ flowchart LR
 | `bin/zelda-rando` | The wrapper you run. Fetches and builds everything, maps host paths into the container. |
 | `driver/` | `zrcli`, a small C# console program. It loads the app's own DLLs and repeats what the GUI's Generate button does (`GenerateDlg.DoGeneration`). |
 | `docker/Dockerfile` | Wine with Microsoft .NET Framework 4.8 installed by winetricks. |
-| `presets/` | Five settings files, the script that builds them, and the hero sprite each one uses. |
-| `tools/automap.py`, `mods/automap/` | **Experimental:** ports [Zelda Automap Plus](https://www.romhacking.net/hacks/796/) onto a seed, with the map drawn from the seed's own overworld. See [mods/automap/README.md](mods/automap/README.md). |
+| `presets/` | Five settings files, the script that builds them, and the hero sprite and NPC set each one uses. |
+| `mods/redux/`, `tools/automap.py` | **Experimental: Zelda Remuxed.** Assembles features of [Zelda Redux](https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux) onto a seed, starting with its automap, redrawn from the seed's own overworld. See [mods/redux/README.md](mods/redux/README.md). |
 | `$ZR_HOME` | `~/.local/share/zelda-reloaded`: the extracted app, its graphics packs, and the installer cache. |
 
 ## Commands
@@ -85,6 +85,17 @@ SHA-1 of the PRG/CHR data `A12D74C73A0481599A5D832361D168F4737BBCF6`.
 | `03-looking-glass` | Through the Looking Glass | ★★★☆☆ | Shadow Link | Mirrored and recolored world, upside-down dungeons entered from the north, swapped item and enemy sprites, Bubbles that swap or invert the buttons. |
 | `04-haunted` | The Haunting of Hyrule | ★★★★☆ | Zelda (The Quest of Zelda) | Ghini invisible, Darknuts, Wizzrobes, Stalfos and Gibdos half-faded. Blackout rooms, enemies hit 25% harder and take one more hit, Like Likes eat rings and rupees, Ganon warps. |
 | `05-gauntlet` | Ganon's Gauntlet | ★★★★★ | Zelda (Hyrule Warriors) | Everything chaotic: random enemy mixes, bosses as regular enemies, enemies hit 50% harder, weapon damage varies, two Bubble curses at once, greedy Like Likes, a Ganon who heals and warps. |
+
+Graphics packs are not part of a settings file, so pass them with `--asset`.
+`presets/HEROES.tsv` lists each preset's hero and, for the four with a Zelda hero,
+the NPC set *The Quest of Zelda*, which puts Link in the princess's place in Level 9:
+
+```sh
+zelda-rando gen --preset 01-new-hyrule --asset link=Zelda --asset "npc=The Quest of Zelda"
+```
+
+The NPC set changes only sprite tiles. A seed made with it has the same seed hash and
+world as one made without, so saves carry over between the two.
 
 Edit a preset in `presets/make-presets.py`, then run `python3 presets/make-presets.py`.
 Every seed passes the app's own solvability check (`SeedValidator`) before it is written.

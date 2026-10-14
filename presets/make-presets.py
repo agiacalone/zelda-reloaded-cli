@@ -8,7 +8,9 @@ editing a preset below; it rewrites presets/<name>.xml.
 
 The hero sprite is not part of the settings file. It is a graphics pack chosen
 at generation time (zelda-rando gen --asset link=NAME); HERO records the one
-each preset is meant to use.
+each preset is meant to use. Presets with a Zelda hero also record NPC = "The
+Quest of Zelda" (--asset npc=NAME), whose captive in Level 9 is Link, so the
+roles are swapped at both ends of the game.
 """
 import copy
 import pathlib
@@ -32,14 +34,14 @@ DG_GEN = dict(BuildRulesPreset="q1", AllowOverworldEnemies="0", AllowDungeonEnem
 
 PRESETS = {
     "01-new-hyrule": dict(
-        title="A New Hyrule", stars=1, hero="Zelda",
+        title="A New Hyrule", stars=1, hero="Zelda", npc="The Quest of Zelda",
         overworld=dict(EnemyRulesPreset="easier"),
         dungeons=dict(EnemyRulesPreset="easier"),
         stats=dict(Hearts="4~4", MaxHearts="4~4", Bombs="4~4"),
         behaviors=dict(StackPotions="1"),
     ),
     "02-moonlit": dict(
-        title="Hyrule by Moonlight", stars=2, hero="Zelda (Breath of the Wild)",
+        title="Hyrule by Moonlight", stars=2, hero="Zelda (Breath of the Wild)", npc="The Quest of Zelda",
         overworld=dict(EntranceRulesPreset="any", BombRulesPreset="any", BurnRulesPreset="any",
                        RecorderRulesPreset="default", AllowDungeonEnemies="1"),
         night=1,
@@ -59,7 +61,7 @@ PRESETS = {
         bubbles=dict(DisableA="0", SwapButtons="1", Invert="1", DecidePerLevel="1"),
     ),
     "04-haunted": dict(
-        title="The Haunting of Hyrule", stars=4, hero="Zelda (The Quest of Zelda)",
+        title="The Haunting of Hyrule", stars=4, hero="Zelda (The Quest of Zelda)", npc="The Quest of Zelda",
         overworld=dict(EntranceRulesPreset="any", BombRulesPreset="any", BurnRulesPreset="any",
                        RecorderRulesPreset="default", EnemyRulesPreset="harder",
                        AllowDungeonEnemies="1", AllowBossesAsEnemies="1"),
@@ -77,7 +79,7 @@ PRESETS = {
         enemies=dict(GanonWarping="2~2", GanonStunTime="48~48"),
     ),
     "05-gauntlet": dict(
-        title="Ganon's Gauntlet", stars=5, hero="Zelda (Hyrule Warriors)",
+        title="Ganon's Gauntlet", stars=5, hero="Zelda (Hyrule Warriors)", npc="The Quest of Zelda",
         overworld=dict(EntranceRulesPreset="any", BombRulesPreset="any", BurnRulesPreset="any",
                        RecorderRulesPreset="default", EnemyRulesPreset="random",
                        AllowDungeonEnemies="1", AllowBossesAsEnemies="1", AllowSecondQuestBubbles="1"),
@@ -163,7 +165,7 @@ def main():
         build(name, p, base)
     with open(HERE / "HEROES.tsv", "w") as f:
         for name, p in PRESETS.items():
-            f.write(f"{name}\t{p['hero']}\t{p['title']}\t{p['stars']}\n")
+            f.write(f"{name}\t{p['hero']}\t{p['title']}\t{p['stars']}\t{p.get('npc', '')}\n")
 
 
 if __name__ == "__main__":

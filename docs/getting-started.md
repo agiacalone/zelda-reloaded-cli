@@ -20,8 +20,8 @@ waiting for downloads.
 ## 1. Set up
 
 ```sh
-git clone https://github.com/agiacalone/zelda-reloaded-cli.git
-cd zelda-reloaded-cli
+git clone https://github.com/agiacalone/zelda-remuxed.git
+cd zelda-remuxed
 ./bin/zelda-rando setup
 ```
 
