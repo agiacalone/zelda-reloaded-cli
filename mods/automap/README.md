@@ -2,7 +2,7 @@
 
 > [!WARNING]
 > **Experimental.** This works on the seeds tested so far, but it is not yet wired
-> into `zelda-rando gen` and has not been tested on every preset. See *Status* below.
+> into `zelda-rando gen` and has not been tested in dungeons. See *Status* below.
 
 [Zelda Automap Plus](https://www.romhacking.net/hacks/796/) by snarfblam adds a small
 overworld map to the status bar. Each screen fills in the first time you visit it, so
@@ -47,15 +47,16 @@ made with options this port has not seen, and it stops instead of writing a brok
 
 ## Status
 
-Tested on seed `BFEWOT86S` (preset 01), in FCEUX and on an Anbernic RG34XX-SP running
-ROCKNIX (FCEUmm):
+Tested in FCEUX on all five preset seeds, and on an Anbernic RG34XX-SP running ROCKNIX
+(FCEUmm) on seed `BFEWOT86S`:
 
 - [x] Boots and plays; graphics and status bar correct
 - [x] New game starts with a dark map; visited screens fill in from the seed's map
 - [x] The map is saved with your file and survives a power cycle
-- [ ] Every screen revealed matches the seed's overworld
-- [ ] Dungeons, the pause screen, dying and continuing
-- [ ] The other four presets, especially the mirrored world of preset 03
+- [x] A fully revealed map matches the seed's overworld, on all five presets
+- [x] Mirrored worlds (presets 03 and 05): the map matches the world as played
+- [x] The pause screen shows the map, and it survives unpausing
+- [ ] Dungeons, dying and continuing
 - [ ] `zelda-rando gen --mod automap`
 
 Credit: Zelda Automap Plus is snarfblam's work. This directory contains only the code
