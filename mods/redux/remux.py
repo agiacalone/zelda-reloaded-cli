@@ -54,9 +54,16 @@ def automap_edits(work, seed_dir, features):
         # Two blocks in space Reloaded uses.
         (r"%org\(\$AF20,5\)", "%org($BB00,5)"),
         (r"%org\(\$B000,2\)", "%org($B800,2)"),
-        # RAM: Reloaded copies code into $7F10-$7F25 at power-on.
-        (r"(!SecondPpuStringIndex\s*=\s*)\$7F10", r"\g<1>$7F30"),
-        (r"(!MapBlipY\s*=\s*)\$7F29", r"\g<1>$7F49"),
+        # RAM. Reloaded copies code into $7F10-$7F25 at power-on, and its
+        # graphics streamer (bank 3 $BA38) stages 64-byte chunks at
+        # $7F40-$7F83 whenever a room loads new enemy or NPC graphics.
+        # Working data goes just below the streamer, the visited screens and
+        # the saved maps above it (see the RAM map in README.md).
+        (r"(!SecondPpuStringIndex\s*=\s*)\$7F10", r"\g<1>$7F26"),
+        (r"(!MapBlipY\s*=\s*)\$7F29", r"\g<1>$7F39"),
+        (r"(!MapRam\s*=\s*)\$7F50", r"\g<1>$7FB0"),
+        (r"(!MapSaveRam\s*=\s*)\$7F60", r"\g<1>$7FC0"),
+        (r"(!PlayerMapData\s*=\s*)\$7F50", r"\g<1>$7FB0"),
         # Fixed bank: Reloaded leaves 14 bytes at $FF42 and 16 at $FFDB.
         # SafeBlipUpdate (16 bytes) moves whole; DoWholeMapHijack splits into
         # a check in bank 6 and a 13-byte bank-swap stub.
@@ -146,10 +153,10 @@ def hud_layout_edits(work, seed_dir, features):
 
 def arrows_edits(work, seed_dir, features):
     """Redux's arrow counter. Its arrow-drop routine runs from RAM; move it to
-    the RAM routine area (ROM $9EC4, run at $7FA0) and point the hook there."""
+    the RAM routine area (ROM $9EC4, run at $7F84) and point the hook there."""
     return [
-        (r"\tjmp \$7EE1", "\tjmp $7FA0"),
-        (r"%org\(\$B751,1\)[^\n]*\n", "org $9EC4-$8000+$4000+!headersize\nbase $7FA0\t; RAM routine area\n"),
+        (r"\tjmp \$7EE1", "\tjmp $7F84"),
+        (r"%org\(\$B751,1\)[^\n]*\n", "org $9EC4-$8000+$4000+!headersize\nbase $7F84\t; RAM routine area\n"),
     ]
 
 
@@ -304,11 +311,22 @@ def redux_order(redux, features):
 GLUE = """
 %org($8CB0,1)
 RemuxCopyStub:
-\tldx #$1F\t; RAM routines: ROM bank 1 $9EC4-$9EE3 -> RAM $7FA0-$7FBF
+\tldx #$1B\t; RAM routines: ROM bank 1 $9EC4-$9EDF -> RAM $7F84-$7F9F
 -\tlda $9EC4,x
-\tsta $7FA0,x
+\tsta $7F84,x
 \tdex
 \tbpl -
+\tlda $7FAF\t; first boot with this RAM layout? clear the map area once
+\tcmp #$5A
+\tbeq +
+\tlda #$00
+\tldx #$3F
+-\tsta $7FB0,x
+\tdex
+\tbpl -
+\tlda #$5A
+\tsta $7FAF
++
 {extra}\tlda #$A5
 \tsta $7FFF
 \tjmp $8D00
@@ -323,9 +341,10 @@ RemuxCopyStub:
 """
 # RAM routines. Redux places small routines in the part of bank 1 the game
 # copies to RAM; Reloaded fills that part, and the mirrored seeds leave no gap
-# big enough. The stub above therefore also copies 32 bytes from free ROM
-# (bank 1 $9EC4) to RAM $7FA0-$7FBF, which nothing else uses: features that
-# need a RAM routine assemble it there (see arrows_edits).
+# big enough. The stub above therefore also copies 28 bytes from free ROM
+# (bank 1 $9EC4) to RAM $7F84-$7F9F, just above Reloaded's graphics streamer
+# buffer: features that need a RAM routine assemble it there (arrows_edits).
+# $7FAF marks that the automap's map area ($7FB0-$7FEF) has been cleared.
 # Glue writes into Reloaded's own code: (bank, address, seed byte expected).
 GLUE_SITES = [(1, 0x8D31, 0x80), (1, 0x8D37, 0x00), (15, 0xE902, 0x00), (15, 0xE903, 0x8D),
               (15, 0xE997, 0x00), (15, 0xE998, 0x8D),
@@ -461,7 +480,7 @@ def gfx_blocks(redux):
     return out
 
 
-def apply_graphics(out, seed, original, redux, groups):
+def apply_graphics(out, seed, original, redux, groups):  # noqa: C901
     """Write Redux's redrawn tiles wherever the seed still has the original.
 
     Each block is located in the seed by 64-byte windows of its original bytes;
@@ -489,7 +508,9 @@ def apply_graphics(out, seed, original, redux, groups):
         written = 0
         for a in good:
             for t in changed:
-                if seed[a + t:a + t + 16] == orig[t:t + 16]:
+                # Both the seed and the assembled ROM must still hold the
+                # original tile: never overwrite code a feature assembled.
+                if seed[a + t:a + t + 16] == orig[t:t + 16] and out[a + t:a + t + 16] == orig[t:t + 16]:
                     out[a + t:a + t + 16] = new[t:t + 16]
                     written += 1
         report.append(f"{name}: {len(good)} location(s), {written} tiles")

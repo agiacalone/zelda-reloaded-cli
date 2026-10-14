@@ -49,7 +49,7 @@ quarter hearts, a map coloured by region, and a blinking position marker. On a s
 | Redux's map picture is of the original Hyrule | `tools/automap.py` draws the seed's own from its spoiler map |
 | Redux's region colours are chosen for the original Hyrule | Each HUD palette area (4 screens across) picks green, grey or brown from the seed's terrain |
 | Picture at bank 5 `$AD00`, blocks at bank 5 `$AF20` and bank 2 `$B000`: space Reloaded uses | Moved to `$B900`, `$BB00` and `$B800` |
-| RAM `$7F10-$7F29`: Reloaded copies code there at power-on | Moved to `$7F30` |
+| RAM `$7F10-$7F29`: Reloaded copies code there at power-on | Moved; see the RAM map below |
 | Two fixed-bank routines; Reloaded leaves only small gaps in bank 15 | One moves to `$FFDB`; the other splits into a bank 6 check and a 13-byte stub at `$FF42` |
 | Redux draws the map into the four tile banks of its overworld animation | Reloaded has one tile bank: draw once, never switch |
 | Fast life fill at bank 5 `$B1F2` | Left out: Reloaded's FastFill rewrote that code |
@@ -81,7 +81,7 @@ count).
 | Redux renames the dungeon caption "LEVEL-7" to "DUNGEON-7" and moves the digit; Reloaded draws its own caption, so the digit was lost | Keep "LEVEL-7" and move it above the map (`$2042` to `$2056`). The caption is kept in battery RAM, so the power-on stub re-points it for older save files too |
 | Redux's small "x" is tile `$62`, which Reloaded uses as the dash in "LEVEL-7" | The counters keep the original "X" (tile `$21`) |
 | The dungeon HUD attributes at bank 6 `$A2CD` overwrite the end of the game-over menu ("RETRY"); Redux moves that menu text in a feature not ported here | Moved to `$B100` |
-| The arrow-drop routine runs from RAM, in a part of bank 1 the mirrored seeds fill | A RAM routine area: the power-on stub copies bank 1 `$9EC4` to RAM `$7FA0-$7FBF`, which nothing else uses |
+| The arrow-drop routine runs from RAM, in a part of bank 1 the mirrored seeds fill | A RAM routine area: the power-on stub copies bank 1 `$9EC4` to RAM `$7F84-$7F9F` (see the RAM map) |
 
 ### A blind spot of the safety check
 
@@ -105,6 +105,29 @@ and pass a new game, a death, a save and a reload in FCEUX:
 seed) and `item-toggle` (Select toggles the B item: name registration never finishes).
 Both build safely; the clash is in behaviour, not bytes. `dungeon-music` is on hold
 too: it passes every FCEUX test, but dungeon music plays wrong on hardware.
+
+## Battery RAM map
+
+`$6000-$7FFF` is battery-backed. At every power-on and game start the game copies
+bank 1 `$A500+` over `$6C90-$7F4F` (the stub stops it there). Measured with a write
+trace across the overworld and all nine levels, plus a scan of every absolute access:
+
+| Range | Owner | Use |
+|---|---|---|
+| `$7F10-$7F25` | Reloaded | Code copied in at power-on (enemy visibility) |
+| `$7F26-$7F39` | Remuxed (automap) | Working data: PPU macro, map bits, blip position |
+| `$7F40-$7F83` | Reloaded | Graphics streamer (bank 3 `$BA38`): 64-byte chunks staged when a room loads new enemy, boss or NPC graphics |
+| `$7F84-$7F9F` | Remuxed | RAM routines, copied from bank 1 `$9EC4` at power-on (the arrow drop) |
+| `$7FAF` | Remuxed | `$5A` once the map area has been cleared |
+| `$7FB0-$7FBF` | Remuxed (automap) | Visited screens |
+| `$7FC0-$7FEF` | Remuxed (automap) | Saved maps, 16 bytes per file |
+| `$7FFF` | Reloaded | `$A5` marker |
+
+The first port put the automap at `$7F30-$7F8F` and the arrow routine at `$7FA0`.
+The streamer overwrote the maps in rooms that load graphics, and a graphics bug
+overwrote the routine's source in ROM; together they froze the game on a miniboss and
+on the sword pickup (2026-10-14). The graphics step now writes a tile only where the
+assembled ROM, not just the seed, still has the original.
 
 ## Graphics
 
