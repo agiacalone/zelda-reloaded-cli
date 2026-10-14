@@ -20,7 +20,7 @@ waiting for downloads.
 ## 1. Set up
 
 ```sh
-git clone git@github.com:agiacalone/zelda-reloaded-cli.git
+git clone https://github.com/agiacalone/zelda-reloaded-cli.git
 cd zelda-reloaded-cli
 ./bin/zelda-rando setup
 ```
@@ -75,10 +75,4 @@ The option names in the XML match the GUI's pages. The values used most are
 
 ## If something goes wrong
 
-| Symptom | Confirm | Fix |
-|---|---|---|
-| `not set up; run: zelda-rando setup` | `ls ~/.local/share/zelda-reloaded/vendor/zrcli.exe` | Run setup |
-| `installer checksum mismatch` | `sha256sum ~/.local/share/zelda-reloaded/cache/*.zip`; want `c94139a4…` | The upstream file changed. Delete the cache and retry; if it still differs, check reloadedretro.com for a new version |
-| `ROM is not the unmodified Legend of Zelda, The (USA)` | `tail -c +17 rom.nes \| head -c 131072 \| sha1sum`; want `a12d74c7…` | Use the unmodified USA (PRG0) ROM |
-| `no link asset named '...'` | `zelda-rando list-assets link` | Use the exact name from the list, or run `update-packages --community` |
-| `timed out after 900s` | Run again with `-v` and watch for `salt N:` lines | Raise `--timeout`; chaos settings retry more |
+See [troubleshooting.md](troubleshooting.md). Each entry has a command that confirms the cause.

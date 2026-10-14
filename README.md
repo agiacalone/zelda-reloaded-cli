@@ -7,6 +7,11 @@ can be scripted. Output is byte-identical to the Windows app for the same seed
 and settings.
 
 New here? Start with [docs/getting-started.md](docs/getting-started.md) (about 20 minutes).
+Something broken? See [docs/troubleshooting.md](docs/troubleshooting.md).
+
+**Requirements:** Linux with Docker, `innoextract`, `unzip`, `curl`, about 6 GB of
+disk, and your own unmodified *Legend of Zelda, The (USA)* ROM. Tested on Fedora 44
+with Docker 29.
 
 > [!IMPORTANT]
 > This repo contains **none** of the randomizer itself. Its license allows
@@ -54,6 +59,8 @@ zelda-rando gen --settings path/to/settings.xml --seed 9K8HMU15DR1Q    # reprodu
 | `--preset NAME` | `presets/NAME.xml` |
 | `--settings FILE` | Any settings file: saved from the GUI (*File → Save*) or the `settings.xml` beside an earlier seed |
 | `--seed SEED` | Seed string. Omit for a random one. Same seed plus same settings gives the same ROM. |
+| `--out DIR` | Output directory, default `./out`. Each seed gets its own folder. |
+| `--rom FILE` | The base ROM. Or set `ZR_ROM`. |
 | `--asset CATEGORY=NAME` | A graphics pack by the name `list-assets` prints. Repeat for several categories. |
 | `--name NAME` | ROM file name, without `.nes` |
 | `--timeout SECONDS` | Default 900. A heavy chaos seed can take several minutes. |
@@ -122,3 +129,17 @@ cmp OLD/*.nes /tmp/check/OLDSEED/*.nes && echo identical
 ```
 
 Done on 2026-10-14 against seed `9K8HMU15DR1Q` (made in the Windows GUI on 2025-02-10): identical ROM and `seedinfo.txt`.
+
+## Legal
+
+The code in this repo is under the [MIT License](LICENSE). That covers the
+wrapper, the driver, the Dockerfile and the presets, and nothing else.
+
+*Legend of Zelda [reloaded]* belongs to its author, MetalMachine. Its license
+permits redistribution "in its original installable form only" and free of
+charge, which is why setup downloads it from the author instead of shipping it.
+The graphics packs come from the author's package server through the app's own
+updater.
+
+No ROMs are included. *The Legend of Zelda* is a trademark of Nintendo. This
+project is not affiliated with or endorsed by Nintendo or MetalMachine.
