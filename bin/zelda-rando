@@ -1,0 +1,173 @@
+#!/usr/bin/env bash
+# zelda-rando: run the "Legend of Zelda [reloaded]" randomizer headless on Linux.
+#
+# The randomizer is a Windows .NET program. This script fetches the official
+# installer, builds the zrcli driver against it, and runs both under Wine with
+# Microsoft .NET Framework 4.8 in a container. See README.md.
+set -euo pipefail
+
+VERSION=1.0.98
+INSTALLER_URL="https://reloaded.blob.core.windows.net/apps/zelda/reloaded-zelda-${VERSION}-setup.zip"
+INSTALLER_SHA256=c94139a4da6e3e431119ef1939ef0836762dae08d349509566f4300dbd177bca
+IMAGE=local/zelda-reloaded:${VERSION}
+SDK_IMAGE=mcr.microsoft.com/dotnet/sdk:8.0
+# SHA-1 of the PRG+CHR data (after the 16-byte header) the app requires.
+ROM_SHA1=a12d74c73a0481599a5d832361d168f4737bbcf6
+
+REPO=$(cd "$(dirname "$(readlink -f "$0")")/.." && pwd)
+ZR_HOME=${ZR_HOME:-${XDG_DATA_HOME:-$HOME/.local/share}/zelda-reloaded}
+ZR_ROM=${ZR_ROM:-}
+VENDOR=$ZR_HOME/vendor
+PROGDATA=$ZR_HOME/programdata
+ASSETS=$ZR_HOME/assets.tsv
+
+die() { echo "zelda-rando: $*" >&2; exit 1; }
+
+usage() {
+    cat <<EOF
+usage: zelda-rando COMMAND [ARGS]
+
+  setup                     fetch the official installer, build the driver and the image
+  update-packages [--community]
+                            download official (and community) graphics packs
+  list-assets [CATEGORY]    list graphics packs: link npc enemies bosses ganon items font overworld dungeons
+  defaults FILE             write the GUI's default settings to FILE
+  gen [OPTIONS]             generate one seed
+
+gen options:
+  --preset NAME             use presets/NAME.xml from the repo
+  --settings FILE           use a settings.xml saved by the GUI or by an earlier seed
+  --seed SEED               seed string (default: random, 6-12 characters)
+  --out DIR                 output directory (default: ./out); the seed gets its own folder
+  --name NAME               ROM file name without .nes
+  --asset CATEGORY=NAME     graphics pack by name, as list-assets prints it; may repeat
+  --rom FILE                unmodified "Legend of Zelda, The (USA).nes" (or set ZR_ROM)
+  --timeout SECONDS         give up after this long (default 900)
+  -v                        show progress
+
+environment: ZR_HOME (default ~/.local/share/zelda-reloaded), ZR_ROM
+EOF
+}
+
+# Run zrcli in the container. The vendor app, its package store and one work
+# directory are mounted; zrcli sees the work directory as Z:\w.
+zrcli() {
+    local work=$1 timeout=$2; shift 2
+    [[ -f $VENDOR/zrcli.exe ]] || die "not set up; run: zelda-rando setup"
+    mkdir -p "$PROGDATA/packages/zelda"
+    local name="zelda-rando-$$-$RANDOM"
+    docker run -d --name "$name" \
+        -v "$VENDOR:/app:ro" -v "$work:/w" \
+        -v "$PROGDATA:/home/u/.wine/drive_c/ProgramData/reloaded" \
+        -w /w "$IMAGE" bash -c 'wine /app/zrcli.exe "$@"; echo $? > /w/.rc' zrcli "$@" >/dev/null
+    if ! timeout "$timeout" docker wait "$name" >/dev/null; then
+        docker rm -f "$name" >/dev/null
+        die "timed out after ${timeout}s"
+    fi
+    docker logs "$name" 2>&1 | grep -v ':fixme:' || true
+    docker rm "$name" >/dev/null
+    return "$(cat "$work/.rc" 2>/dev/null || echo 1)"
+}
+
+cmd_setup() {
+    command -v innoextract >/dev/null || die "innoextract is required (dnf install innoextract)"
+    local cache=$ZR_HOME/cache zip
+    mkdir -p "$cache"
+    zip=$cache/reloaded-zelda-${VERSION}-setup.zip
+    [[ -f $zip ]] || curl -fsSL -o "$zip" "$INSTALLER_URL"
+    echo "$INSTALLER_SHA256  $zip" | sha256sum -c --quiet || die "installer checksum mismatch: $zip"
+
+    local tmp; tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' RETURN
+    (cd "$tmp" && unzip -q "$zip" && innoextract -s -d x "reloaded-zelda-${VERSION}-setup.exe")
+    rm -rf "$VENDOR"; mkdir -p "$VENDOR"
+    cp "$tmp"/x/app/* "$VENDOR/"
+
+    docker run --rm -v "$REPO/driver:/src:ro" -v "$VENDOR:/vendor" "$SDK_IMAGE" bash -c '
+        set -e
+        cp -r /src /build && cd /build
+        dotnet build -c Release -o /tmp/out -nologo -v q
+        cp /tmp/out/zrcli.exe /vendor/
+        chown '"$(id -u):$(id -g)"' /vendor/zrcli.exe'
+    docker build -t "$IMAGE" "$REPO/docker"
+    echo "set up in $ZR_HOME"
+}
+
+cmd_update_packages() {
+    local work; work=$(mktemp -d)
+    zrcli "$work" 1800 update-packages "$@"
+    zrcli "$work" 300 list-assets | tr -d '\r' > "$ASSETS"
+    rm -rf "$work"
+}
+
+cmd_list_assets() {
+    [[ -f $ASSETS ]] || die "no graphics packs yet; run: zelda-rando update-packages"
+    if [[ $# -gt 0 ]]; then awk -F'\t' -v c="$1" '$1 == c' "$ASSETS"; else cat "$ASSETS"; fi |
+        cut -f1-4 | column -t -s $'\t'
+}
+
+cmd_defaults() {
+    [[ $# -eq 1 ]] || die "usage: zelda-rando defaults FILE"
+    local work; work=$(mktemp -d)
+    zrcli "$work" 300 defaults 'Z:\w\defaults.xml'
+    cp "$work/defaults.xml" "$1"
+    rm -rf "$work"
+}
+
+# Turn "link=Zelda (Breath of the Wild)" into "link=C:\ProgramData\...\X.asset".
+resolve_asset() {
+    local cat=${1%%=*} name=${1#*=} path
+    [[ -f $ASSETS ]] || die "no graphics packs yet; run: zelda-rando update-packages"
+    path=$(awk -F'\t' -v c="$cat" -v n="$name" '$1 == c && $2 == n { print $5; exit }' "$ASSETS")
+    [[ -n $path ]] || die "no $cat asset named '$name' (see: zelda-rando list-assets $cat)"
+    printf '%s=%s' "$cat" "$path"
+}
+
+cmd_gen() {
+    local settings="" seed="" out=./out name="" rom=$ZR_ROM timeout=900 verbose=() assets=()
+    while [[ $# -gt 0 ]]; do
+        case $1 in
+            --preset)   settings=$REPO/presets/$2.xml; shift 2 ;;
+            --settings) settings=$2; shift 2 ;;
+            --seed)     seed=$2; shift 2 ;;
+            --out)      out=$2; shift 2 ;;
+            --name)     name=$2; shift 2 ;;
+            --asset)    assets+=(--asset "$(resolve_asset "$2")"); shift 2 ;;
+            --rom)      rom=$2; shift 2 ;;
+            --timeout)  timeout=$2; shift 2 ;;
+            -v)         verbose=(-v); shift ;;
+            *) die "unknown option: $1" ;;
+        esac
+    done
+    [[ -n $rom && -f $rom ]] || die "need the USA ROM: --rom FILE or ZR_ROM"
+    [[ $(tail -c +17 "$rom" | head -c 131072 | sha1sum | cut -c1-40) == "$ROM_SHA1" ]] ||
+        die "ROM is not the unmodified Legend of Zelda, The (USA): $rom"
+    [[ -z $settings || -f $settings ]] || die "no such settings file: $settings"
+
+    local work; work=$(mktemp -d)
+    cp "$rom" "$work/zelda.nes"
+    local args=(generate --rom 'Z:\w\zelda.nes' --out 'Z:\w\out')
+    if [[ -n $settings ]]; then cp "$settings" "$work/settings.xml"; args+=(--settings 'Z:\w\settings.xml'); fi
+    [[ -n $seed ]] && args+=(--seed "$seed")
+    [[ -n $name ]] && args+=(--name "$name")
+    local rc=0
+    zrcli "$work" "$timeout" "${args[@]}" "${assets[@]}" "${verbose[@]}" || rc=$?
+    if [[ $rc -eq 0 ]]; then
+        mkdir -p "$out"
+        cp -r "$work"/out/* "$out/"
+    fi
+    rm -rf "$work"
+    return $rc
+}
+
+[[ $# -gt 0 ]] || { usage; exit 2; }
+cmd=$1; shift
+case $cmd in
+    setup)           cmd_setup "$@" ;;
+    update-packages) cmd_update_packages "$@" ;;
+    list-assets)     cmd_list_assets "$@" ;;
+    defaults)        cmd_defaults "$@" ;;
+    gen)             cmd_gen "$@" ;;
+    -h|--help|help)  usage ;;
+    *)               usage; exit 2 ;;
+esac

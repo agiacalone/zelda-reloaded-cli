@@ -1,0 +1,8 @@
+# The vendor program may only be redistributed as its original installer, so
+# nothing extracted from it is ever committed.
+/vendor/
+/driver/.build/
+/driver/bin/
+/driver/obj/
+*.nes
+/out/

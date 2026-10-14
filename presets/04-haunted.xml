@@ -1,0 +1,126 @@
+<?xml version='1.0' encoding='utf-8'?>
+<OperationsConfig>
+  <Operation Key="overworld_mode" Type="Reloaded.Lib.Zelda.Operations.OverworldConfig, Reloaded.Lib.Zelda.Operations">
+    <OverworldConfig>
+      <UseNormalQ1>false</UseNormalQ1>
+      <UseNormalQ2>false</UseNormalQ2>
+      <UseCustom>false</UseCustom>
+      <CustomUID />
+      <Generate>true</Generate>
+      <GenerationSettings EntranceRulesPreset="any" BombRulesPreset="any" BurnRulesPreset="any" RecorderRulesPreset="default" AllowOverworldEnemies="1" AllowDungeonEnemies="1" AllowBossesAsEnemies="1" AllowSecondQuestBubbles="0" EnemyRulesPreset="harder" />
+      <MirroringMode>0</MirroringMode>
+      <RecoloringMode>0</RecoloringMode>
+      <NightMode>1</NightMode>
+      <SpoilersLevel>3</SpoilersLevel>
+    </OverworldConfig>
+  </Operation>
+  <Operation Key="dungeons_mode" Type="Reloaded.Lib.Zelda.Operations.DungeonConfig, Reloaded.Lib.Zelda.Operations">
+    <DungeonConfig>
+      <UseNormalQ1>false</UseNormalQ1>
+      <UseNormalQ2>false</UseNormalQ2>
+      <UseCustom>false</UseCustom>
+      <CustomUID />
+      <Generate>true</Generate>
+      <GenerationSettings BuildRulesPreset="chaos" AllowOverworldEnemies="1" AllowDungeonEnemies="1" AllowBossesAsEnemies="0" AllowSecondQuestBubbles="0" EnemyRulesPreset="harder" UseNonStandardRooms="1" FlipMirrorRooms="1" SwapRoomTiles="1" FlippedMode="0" AllowBlackout="1" />
+      <MirroringMode>0</MirroringMode>
+      <RecoloringMode>1</RecoloringMode>
+      <SpoilersLevel>3</SpoilersLevel>
+    </DungeonConfig>
+  </Operation>
+  <Operation Key="general_stats" Type="Reloaded.Lib.Zelda.Operations.StartStats, Reloaded.Lib.Zelda.Operations">
+    <StartStats EnableRando="false">
+      <Hearts>3~3</Hearts>
+      <MaxHearts>3~3</MaxHearts>
+      <Bombs>0~0</Bombs>
+      <MaxBombs>8~8</MaxBombs>
+      <Keys>0~0</Keys>
+      <Rupees>0~0</Rupees>
+      <Potions>0~0</Potions>
+    </StartStats>
+  </Operation>
+  <Operation Key="general_equips" Type="Reloaded.Lib.Zelda.Operations.StartEquipment, Reloaded.Lib.Zelda.Operations">
+    <StartEquipment />
+  </Operation>
+  <Operation Key="general_pieces" Type="Reloaded.Lib.Zelda.Operations.StartTriforces, Reloaded.Lib.Zelda.Operations">
+    <StartTriforces>
+      <Values>0 0 0 0 0 0 0 0</Values>
+    </StartTriforces>
+  </Operation>
+  <Operation Key="general_damage" Type="Reloaded.Lib.Zelda.Operations.WeaponDamage, Reloaded.Lib.Zelda.Operations">
+    <WeaponDamage EnableRando="false">
+      <Entry Key="sword1" Value="16~16" />
+      <Entry Key="sword1_beam" Value="16~16" />
+      <Entry Key="sword2" Value="32~32" />
+      <Entry Key="sword2_beam" Value="32~32" />
+      <Entry Key="sword3" Value="64~64" />
+      <Entry Key="sword3_beam" Value="64~64" />
+      <Entry Key="arrows" Value="32~32" />
+      <Entry Key="bombs" Value="64~64" />
+      <Entry Key="candle" Value="16~16" />
+      <Entry Key="wand" Value="32~32" />
+      <Entry Key="wand_beam" Value="32~32" />
+      <Entry Key="boomerang" Value="0~0" />
+    </WeaponDamage>
+  </Operation>
+  <Operation Key="general_options" Type="Reloaded.Lib.Zelda.Operations.Behaviors, Reloaded.Lib.Zelda.Operations">
+    <Behaviors>
+      <FastFill>1</FastFill>
+      <FastText>1</FastText>
+      <FastScroll>1</FastScroll>
+      <ActivateLetter>1</ActivateLetter>
+      <FillHearts>0</FillHearts>
+      <FillBombs>1</FillBombs>
+      <TriforceFillHearts>1</TriforceFillHearts>
+      <TriforceExitsDungeon>1</TriforceExitsDungeon>
+      <StackPotions>0</StackPotions>
+      <StackBaits>0</StackBaits>
+      <HideStats>0</HideStats>
+    </Behaviors>
+  </Operation>
+  <Operation Key="combat_difficulty" Type="Reloaded.Lib.Zelda.Operations.CombatDifficulty, Reloaded.Lib.Zelda.Operations">
+    <CombatConfig EnableRando="false">
+      <BaseDefenseAdjustment>1~1</BaseDefenseAdjustment>
+      <EachDefenseAdjustment>0~0</EachDefenseAdjustment>
+      <BaseOffenseAdjustment>125~125</BaseOffenseAdjustment>
+      <EachOffenseAdjustment>100~100</EachOffenseAdjustment>
+      <ImmunityMods />
+    </CombatConfig>
+  </Operation>
+  <Operation Key="enemy_visibility" Type="Reloaded.Lib.Zelda.Operations.EnemyVisibility, Reloaded.Lib.Zelda.Operations">
+    <EnemyVisibility>
+      <Entry Key="Ghini" Value="0~0" />
+      <Entry Key="Darknut" Value="2~2" />
+      <Entry Key="Wizzrobe" Value="1~1" />
+      <Entry Key="Gibdo" Value="2~2" />
+      <Entry Key="Stalfos" Value="2~2" />
+      <Entry Key="Lynel" Value="2~2" />
+      <Entry Key="PolsVoice" Value="2~2" />
+      <Entry Key="Bubble" Value="1~1" />
+      <Entry Key="Wallmaster" Value="1~1" />
+      <Entry Key="LikeLike" Value="2~2" />
+    </EnemyVisibility>
+  </Operation>
+  <Operation Key="specials_equipment" Type="Reloaded.Lib.Zelda.Operations.EquipConfig, Reloaded.Lib.Zelda.Operations">
+    <EquipMode BraceletForBoulders="1" BraceletForGraves="0" BraceletForBlocks="0" BraceletForPassWalls="0" BookForWandFire="1" BookForFireProof="0" BookForAllMaps="0" BookForPassWalls="0" RecorderForDungeons="1" RecorderForTakeAnyItem="0" RecorderForRandom="0" RecorderNeedsTriforcePieces="1" BlueCandleUsesRupees="1" />
+  </Operation>
+  <Operation Key="specials_bubbles" Type="Reloaded.Lib.Zelda.Operations.BubbleConfig, Reloaded.Lib.Zelda.Operations">
+    <BubbleMode DisableA="1" DisableB="0" Slow="0" SwapButtons="0" Drunk="0" Invert="0" HalfDefense="0" HalfOffense="0" MinSimulCurses="1" MaxSimulCurses="1" DecidePerLevel="0" MinCurseTime="16" MaxCurseTime="16" />
+  </Operation>
+  <Operation Key="specials_likelikes" Type="Reloaded.Lib.Zelda.Operations.LikeLikeConfig, Reloaded.Lib.Zelda.Operations">
+    <LikeLikeMode Shield="1" Money="1" Key="0" Candle="0" Bombs="0" Potion="0" Bait="0" Ring="1" MinSimulThings="1" MaxSimulThings="2" DecidePerLevel="0" MinDelay="96" MaxDelay="96" />
+  </Operation>
+  <Operation Key="specials_enemies" Type="Reloaded.Lib.Zelda.Operations.EnemyConfig, Reloaded.Lib.Zelda.Operations">
+    <EnemyConfig>
+      <ZolSplits LynelRed="false" LynelBlue="false" MoblinRed="false" MoblinBlue="false" GoriyaRed="false" GoriyaBlue="false" OctorokRed="false" OctorokBlue="false" TektiteRed="false" TektiteBlue="false" KeeseBlue="false" KeeseRed="false" KeeseDark="false" DarknutRed="false" DarknutBlue="false" WizzrobeRed="false" WizzrobeBlue="false" BubblesNormal="false" BubblesRed="false" BubblesBlue="false" Gel="true" LikeLike="false" Pols="false" Peahat="false" Boulder="false" Ghini="false" Rope="false" Stalfos="false" Gibdo="false" Flame="false" />
+      <VireSplits LynelRed="false" LynelBlue="false" MoblinRed="false" MoblinBlue="false" GoriyaRed="false" GoriyaBlue="false" OctorokRed="false" OctorokBlue="false" TektiteRed="false" TektiteBlue="false" KeeseBlue="false" KeeseRed="true" KeeseDark="false" DarknutRed="false" DarknutBlue="false" WizzrobeRed="false" WizzrobeBlue="false" BubblesNormal="false" BubblesRed="false" BubblesBlue="false" Gel="false" LikeLike="false" Pols="false" Peahat="false" Boulder="false" Ghini="false" Rope="false" Stalfos="false" Gibdo="false" Flame="false" />
+      <Enable2QStalfos>0</Enable2QStalfos>
+      <Enable2QRopes>0</Enable2QRopes>
+      <GanonHealing>0~0</GanonHealing>
+      <GanonStunTime>48~48</GanonStunTime>
+      <GanonWarping>2~2</GanonWarping>
+    </EnemyConfig>
+  </Operation>
+  <Operation Key="specials_spriteswaps" Type="Reloaded.Lib.Zelda.Operations.SpriteSwapsOp, Reloaded.Lib.Zelda.Operations">
+    <SpriteSwapsOp ItemsEnabled="0" ItemsAffected="3" ItemsVariance="3" EnemiesEnabled="0" EnemiesAffected="3" EnemiesVariance="3" />
+  </Operation>
+</OperationsConfig>
