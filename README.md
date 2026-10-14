@@ -1,10 +1,16 @@
 # zelda-reloaded-cli
 
-A command-line wrapper for **Legend of Zelda [reloaded]** 1.0.98, the NES Zelda
-randomizer by MetalMachine ([reloadedretro.com](https://www.reloadedretro.com/games/zelda)).
-The randomizer is a Windows GUI. This repo runs it headless on Linux, so seeds
-can be scripted. Output is byte-identical to the Windows app for the same seed
-and settings.
+[Legend of Zelda Reloaded Randomizer](https://www.reloadedretro.com/games/zelda) 1.0.98
+by MetalMachine is a randomizer for the NES Zelda that can generate a whole new
+overworld and new dungeons. It is a Windows program with a graphical interface.
+zelda-reloaded-cli runs it headless on Linux, so you can make seeds from a script,
+a server, or a cron job.
+
+The tool does not re-implement the randomizer. A small C# driver loads the app's own
+libraries and calls the same routine as the Generate button. It runs inside a Docker
+container with Wine and Microsoft .NET Framework 4.8. For the same seed and settings,
+the ROM is byte-identical to the one the Windows app makes. This was checked against
+a seed made in the Windows app.
 
 New here? Start with [docs/getting-started.md](docs/getting-started.md) (about 20 minutes).
 Something broken? See [docs/troubleshooting.md](docs/troubleshooting.md).
@@ -39,6 +45,7 @@ flowchart LR
 | `driver/` | `zrcli`, a small C# console program. It loads the app's own DLLs and repeats what the GUI's Generate button does (`GenerateDlg.DoGeneration`). |
 | `docker/Dockerfile` | Wine with Microsoft .NET Framework 4.8 installed by winetricks. |
 | `presets/` | Five settings files, the script that builds them, and the hero sprite each one uses. |
+| `tools/automap.py`, `mods/automap/` | **Experimental:** ports [Zelda Automap Plus](https://www.romhacking.net/hacks/796/) onto a seed, with the map drawn from the seed's own overworld. See [mods/automap/README.md](mods/automap/README.md). |
 | `$ZR_HOME` | `~/.local/share/zelda-reloaded`: the extracted app, its graphics packs, and the installer cache. |
 
 ## Commands

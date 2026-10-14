@@ -6,3 +6,7 @@
 /driver/obj/
 *.nes
 /out/
+
+# Third-party patches are supplied by the user, never committed.
+*.ips
+*.zip
