@@ -1,9 +1,15 @@
-# redux (experimental)
+# redux: Zelda Remuxed internals
 
-> [!WARNING]
-> **Experimental.** The automap, the dungeon automap and Redux's HUD so far. The automap
-> is tested on the five preset seeds in FCEUX and on hardware; the dungeon automap and
-> the HUD are tested in FCEUX only. None is wired into `zelda-rando gen` yet.
+How `remux.py` puts Zelda Redux features onto a Zelda [reloaded] seed: every edit to
+Redux's source, the battery-RAM map, and the checks that stop a bad build. For using it,
+see the [main README](../../README.md) and `zelda-rando gen --mod redux`.
+
+> [!NOTE]
+> Every feature below is tested in FCEUX on the five preset seeds. The automap, dungeon
+> automap, HUD, dungeon music, sword, item drops and graphics have also been played on a
+> Steam Deck (RetroDECK, FCEUmm); Copy/Erase and the item toggle are tested in FCEUX only
+> so far. Several fixes were found only in play, so new features get a hardware pass
+> before they ship.
 
 **Zelda Remuxed** puts features of [The Legend of Zelda Redux](https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux)
 (ShadowOne333 and contributors, GPL-3) onto a Zelda [reloaded] seed. Redux improves the

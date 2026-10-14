@@ -28,3 +28,14 @@ Each entry gives the symptom, a command that confirms the cause, and the fix.
 |---|---|---|
 | Same seed, different game from the Windows GUI | Compare the hash in each `seedinfo.txt` (also on the title screen) | Both sides need version 1.0.98 and the same `settings.xml`. Any changed option changes every seed. |
 | `cmp` reports a difference, but the hashes match | `cmp -l a.nes b.nes \| wc -l`; a few hundred bytes | A different graphics pack. Pass the same `--asset` values the other side used. Sprites do not change the hash. |
+
+## Remuxed (`--mod redux`)
+
+| Symptom | Confirm | Fix |
+|---|---|---|
+| `Redux is not set up; run: zelda-rando setup-redux` | `ls ~/.local/share/zelda-reloaded/asar/asar ~/.local/share/zelda-reloaded/redux` | Run `zelda-rando setup-redux`. |
+| `Asar source checksum mismatch` | `grep ASAR_SHA256 mods/redux/PINS` | The download was cut short, or GitHub changed the archive. Retry; if it persists, rebuild Asar from the pinned commit and update `ASAR_SHA256`. |
+| `source edit matched 0 times` or `matched 2 times` | `git -C ~/.local/share/zelda-reloaded/redux log -1 --format=%h`; want the `REDUX_COMMIT` in `PINS` | Redux's source differs from the pin. Run `setup-redux` again to check out the pinned commit. |
+| `N unsafe writes` with addresses | Rerun with fewer `--mod redux:` features to find which one | A seed option this port has not seen puts Reloaded data where a feature writes. Open an issue with the seed and settings. |
+| `features overwrite each other` | The message names both features | Two features want the same bytes. Leave one out with `--mod redux:...`, and report it. |
+| The map in the HUD is empty after loading a file | Save on the pause screen (Up+A, SAVE), quit, reload | The map is saved only when you save. The first boot of a new Remuxed build also clears old map data once. |
