@@ -301,6 +301,13 @@ FEATURES = {
 # the Steam Deck (2026-10-14); an earlier "wrong music" report was this design.
 
 
+# `zelda-rando gen --mod redux` (or --feature all): every finished feature.
+DEFAULT_FEATURES = ["hud-subscreen", "copy-erase", "save-hearts", "fix-bait", "fix-candle", "fix-cave-timer",
+                    "fix-level1-door", "fix-keyhole", "fix-beam", "fix-leave-cave", "fix-scroll", "arrows",
+                    "automap", "dungeon-automap", "item-toggle", "rupees", "sword-draw", "sword-swing",
+                    "hud-layout", "dungeon-music", "graphics", "graphics-overworld"]
+
+
 def redux_order(redux, features):
     """Sort features into the order Redux's code/main.asm includes them; some
     files patch code that earlier ones wrote."""
@@ -655,13 +662,17 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--redux", required=True)
     ap.add_argument("--asar", required=True)
-    ap.add_argument("--feature", action="append", choices=sorted(FEATURES) + sorted(GFX_GROUPS), default=None)
+    ap.add_argument("--feature", action="append", choices=sorted(FEATURES) + sorted(GFX_GROUPS) + ["all"], default=None,
+                    help="a feature to apply; may repeat; 'all' (the default) applies every finished feature")
     ap.add_argument("original")
     ap.add_argument("seed_dir")
     ap.add_argument("out")
     a = ap.parse_args()
     try:
-        remux(a.redux, a.asar, a.feature or ["automap"], a.original, a.seed_dir, a.out)
+        feats = a.feature or ["all"]
+        if "all" in feats:
+            feats = DEFAULT_FEATURES + [f for f in feats if f not in DEFAULT_FEATURES and f != "all"]
+        remux(a.redux, a.asar, feats, a.original, a.seed_dir, a.out)
     except RemuxError as e:
         print(f"remux: {e}", file=sys.stderr)
         return 1

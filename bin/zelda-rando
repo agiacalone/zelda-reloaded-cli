@@ -28,6 +28,7 @@ usage() {
 usage: zelda-rando COMMAND [ARGS]
 
   setup                     fetch the official installer, build the driver and the image
+  setup-redux               fetch Zelda Redux and Asar at the pinned commits (for --mod redux)
   update-packages [--community]
                             download official (and community) graphics packs
   list-assets [CATEGORY]    list graphics packs: link npc enemies bosses ganon items font overworld dungeons
@@ -43,6 +44,8 @@ gen options:
   --asset CATEGORY=NAME     graphics pack by name, as list-assets prints it; may repeat
   --rom FILE                unmodified "Legend of Zelda, The (USA).nes" (or set ZR_ROM)
   --timeout SECONDS         give up after this long (default 900)
+  --mod redux[:F1,F2,...]   apply Zelda Redux features after generating (Zelda Remuxed):
+                            all finished features, or just those named (see mods/redux/README.md)
   -v                        show progress
 
 environment: ZR_HOME (default ~/.local/share/zelda-reloaded), ZR_ROM
@@ -93,6 +96,34 @@ cmd_setup() {
     echo "set up in $ZR_HOME"
 }
 
+# Zelda Remuxed: Redux source and the Asar assembler, at the commits in PINS.
+REDUX_DIR=$ZR_HOME/redux
+ASAR=$ZR_HOME/asar/asar
+
+cmd_setup_redux() {
+    # shellcheck source=/dev/null
+    . "$REPO/mods/redux/PINS"
+    for t in git cmake c++ curl; do command -v "$t" >/dev/null || die "$t is required for setup-redux"; done
+    if [[ ! -d $REDUX_DIR/.git ]]; then
+        git clone -q "$REDUX_REPO" "$REDUX_DIR"
+    fi
+    git -C "$REDUX_DIR" fetch -q origin
+    git -C "$REDUX_DIR" checkout -q "$REDUX_COMMIT"
+
+    local tmp; tmp=$(mktemp -d)
+    trap 'rm -rf "$tmp"' RETURN
+    curl -fsSL -o "$tmp/asar.tar.gz" "$ASAR_REPO/archive/$ASAR_COMMIT.tar.gz"
+    echo "$ASAR_SHA256  $tmp/asar.tar.gz" | sha256sum -c --quiet || die "Asar source checksum mismatch"
+    tar -C "$tmp" -xzf "$tmp/asar.tar.gz"
+    cmake -S "$tmp/asar-$ASAR_COMMIT/src" -B "$tmp/build" -DCMAKE_BUILD_TYPE=Release \
+        -DASAR_GEN_DLL=OFF -DASAR_GEN_LIB=OFF -DASAR_GEN_EXE_TEST=OFF -DASAR_GEN_DLL_TEST=OFF >/dev/null
+    cmake --build "$tmp/build" -j "$(nproc)" >/dev/null
+    mkdir -p "$(dirname "$ASAR")"
+    cp "$tmp/build/asar/bin/asar" "$ASAR"
+    echo "$ASAR_COMMIT" > "$(dirname "$ASAR")/COMMIT"
+    echo "Redux $(git -C "$REDUX_DIR" rev-parse --short HEAD) and Asar ${ASAR_COMMIT:0:7} ready in $ZR_HOME"
+}
+
 cmd_update_packages() {
     local work; work=$(mktemp -d)
     zrcli "$work" 1800 update-packages "$@"
@@ -124,7 +155,7 @@ resolve_asset() {
 }
 
 cmd_gen() {
-    local settings="" seed="" out=./out name="" rom=$ZR_ROM timeout=900 verbose=() assets=()
+    local settings="" seed="" out=./out name="" rom=$ZR_ROM timeout=900 verbose=() assets=() mod=""
     while [[ $# -gt 0 ]]; do
         case $1 in
             --preset)   settings=$REPO/presets/$2.xml; shift 2 ;;
@@ -135,6 +166,7 @@ cmd_gen() {
             --asset)    assets+=(--asset "$(resolve_asset "$2")"); shift 2 ;;
             --rom)      rom=$2; shift 2 ;;
             --timeout)  timeout=$2; shift 2 ;;
+            --mod)      mod=$2; shift 2 ;;
             -v)         verbose=(-v); shift ;;
             *) die "unknown option: $1" ;;
         esac
@@ -143,6 +175,14 @@ cmd_gen() {
     [[ $(tail -c +17 "$rom" | head -c 131072 | sha1sum | cut -c1-40) == "$ROM_SHA1" ]] ||
         die "ROM is not the unmodified Legend of Zelda, The (USA): $rom"
     [[ -z $settings || -f $settings ]] || die "no such settings file: $settings"
+    local features=()
+    if [[ -n $mod ]]; then
+        [[ $mod == redux || $mod == redux:* ]] || die "unknown mod: $mod (only: redux)"
+        [[ -x $ASAR && -d $REDUX_DIR ]] || die "Redux is not set up; run: zelda-rando setup-redux"
+        if [[ $mod == redux:* ]]; then
+            local IFS=,; for f in ${mod#redux:}; do features+=(--feature "$f"); done; unset IFS
+        fi
+    fi
 
     local work; work=$(mktemp -d)
     cp "$rom" "$work/zelda.nes"
@@ -152,6 +192,16 @@ cmd_gen() {
     [[ -n $name ]] && args+=(--name "$name")
     local rc=0
     zrcli "$work" "$timeout" "${args[@]}" "${assets[@]}" "${verbose[@]}" || rc=$?
+    if [[ $rc -eq 0 && -n $mod ]]; then
+        # Zelda Remuxed: assemble the Redux features onto the new seed, in place.
+        local dir rom_out
+        for dir in "$work"/out/*/; do
+            rom_out=$(ls "$dir"*.nes)
+            python3 "$REPO/mods/redux/remux.py" --redux "$REDUX_DIR" --asar "$ASAR" "${features[@]}" \
+                "$rom" "$dir" "$work/remuxed.nes" || { rc=$?; break; }
+            mv "$work/remuxed.nes" "$rom_out"
+        done
+    fi
     if [[ $rc -eq 0 ]]; then
         mkdir -p "$out"
         cp -r "$work"/out/* "$out/"
@@ -164,6 +214,7 @@ cmd_gen() {
 cmd=$1; shift
 case $cmd in
     setup)           cmd_setup "$@" ;;
+    setup-redux)     cmd_setup_redux "$@" ;;
     update-packages) cmd_update_packages "$@" ;;
     list-assets)     cmd_list_assets "$@" ;;
     defaults)        cmd_defaults "$@" ;;
