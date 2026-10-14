@@ -425,6 +425,77 @@ def mirror_tiles(out, seed):
     return copies, mirrored
 
 
+# ----------------------------------------------------------------- graphics
+
+# Redux ships its graphics as whole blocks (code/gfx/graphics.asm). Reloaded
+# keeps many of the original blocks, some moved or copied several times, and
+# its graphics packs redraw others. Groups of blocks, by what they draw:
+GFX_GROUPS = {
+    "graphics": ["data_00a.bin", "data_00b.bin",          # intro, title screen
+                 "data_01b.bin", "data_01c.bin",          # font, hearts, rupee, key
+                 "data_02a.bin",                          # dungeon walls and floors
+                 "data_03f.bin", "data_03g.bin", "data_03h.bin"],   # bosses, Ganon, Zelda
+    "graphics-overworld": ["data_02b.bin"],               # overworld tiles
+}
+# Tiles Redux redraws that Reloaded uses for something else: (block, tile offset).
+GFX_EXCLUDE = {
+    ("data_01b.bin", 0x590),   # tile $59: Redux lettering; blank in Reloaded
+    ("data_01b.bin", 0x620),   # tile $62: Redux's small "x"; Reloaded's dash
+}
+
+
+def gfx_blocks(redux):
+    """(block name, original file offset, size) in graphics.asm order."""
+    src = (pathlib.Path(redux) / "code/gfx/graphics.asm").read_text()
+    out, cur = [], None
+    for line in src.splitlines():
+        m = re.match(r"\s*%org\(\$([0-9A-F]+),(\d+)\)", line)
+        if m:
+            cur = file_off(int(m.group(2)), int(m.group(1), 16))
+            continue
+        m = re.match(r'\s*incbin "([^"]+)"', line)
+        if m and cur is not None:
+            n = (pathlib.Path(redux) / m.group(1)).stat().st_size
+            out.append((m.group(1).split("/")[-1], cur, n))
+            cur += n
+    return out
+
+
+def apply_graphics(out, seed, original, redux, groups):
+    """Write Redux's redrawn tiles wherever the seed still has the original.
+
+    Each block is located in the seed by 64-byte windows of its original bytes;
+    a location counts only if at least half its tiles still match. At each
+    location a tile is written only if the seed still has the original tile
+    there, so a graphics pack's own tiles always win."""
+    wanted = {b for g in groups for b in GFX_GROUPS[g]}
+    gfx = pathlib.Path(redux) / "code/gfx"
+    report = []
+    for name, off, n in gfx_blocks(redux):
+        if name not in wanted:
+            continue
+        new = (gfx / name).read_bytes()
+        orig = original[off:off + n]
+        tiles = range(0, n - 15, 16)
+        changed = [t for t in tiles if new[t:t + 16] != orig[t:t + 16] and (name, t) not in GFX_EXCLUDE]
+        places = set()
+        for k in range(0, max(1, n - 64), 256):
+            w, i = orig[k:k + 64], seed.find(orig[k:k + 64])
+            while i >= 0:
+                places.add(i - k)
+                i = seed.find(w, i + 1)
+        good = [a for a in sorted(places) if 0 <= a and a + n <= len(seed)
+                and sum(seed[a + t:a + t + 16] == orig[t:t + 16] for t in tiles) >= len(tiles) / 2]
+        written = 0
+        for a in good:
+            for t in changed:
+                if seed[a + t:a + t + 16] == orig[t:t + 16]:
+                    out[a + t:a + t + 16] = new[t:t + 16]
+                    written += 1
+        report.append(f"{name}: {len(good)} location(s), {written} tiles")
+    return report
+
+
 # --------------------------------------------------------------------- main
 
 def remux(redux, asar, features, original_path, seed_dir, out_path):
@@ -437,7 +508,8 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
     if len(seed) != HDR + 16 * BANK:
         raise RemuxError("seed must be a 256 KB Zelda [reloaded] ROM")
 
-    features = redux_order(redux, features)
+    gfx_only = [f for f in features if f in GFX_GROUPS]
+    features = redux_order(redux, [f for f in features if f not in GFX_GROUPS]) + gfx_only
     with tempfile.TemporaryDirectory(prefix="remux-") as tmp:
         work = pathlib.Path(tmp)
         shutil.copytree(pathlib.Path(redux) / "code", work / "code")
@@ -449,7 +521,7 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
         ], "macros.asm")
         (work / "code/macros.asm").write_text(macros)
         includes = []
-        for name in features:
+        for name in [f for f in features if f in FEATURES]:
             path, make_edits, make_extra = FEATURES[name]
             src = (work / path).read_text()
             (work / path).write_text(edit(src, make_edits(work, seed_dir, features), name))
@@ -496,7 +568,10 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
         raise RemuxError(f"{len(bad)} unsafe writes:\n  " + "\n  ".join(group(bad)))
     if "hud-layout" in features:
         transform_hud_layout(out, seed)
-    copies, n = mirror_tiles(out, seed)
+    gfx = [g for g in features if g in GFX_GROUPS]
+    for line in apply_graphics(out, seed, original, redux, gfx) if gfx else []:
+        print(f"  {line}")
+    copies, n = mirror_tiles(out, seed)        # after graphics: copies its bank 2 tiles too
     pathlib.Path(out_path).write_bytes(out)
     changed = sum(a != b for a, b in zip(out, seed))
     print(f"remux: {', '.join(features)}: {changed} bytes written, "
@@ -507,7 +582,7 @@ def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--redux", required=True)
     ap.add_argument("--asar", required=True)
-    ap.add_argument("--feature", action="append", choices=sorted(FEATURES), default=None)
+    ap.add_argument("--feature", action="append", choices=sorted(FEATURES) + sorted(GFX_GROUPS), default=None)
     ap.add_argument("original")
     ap.add_argument("seed_dir")
     ap.add_argument("out")

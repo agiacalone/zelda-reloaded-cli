@@ -106,6 +106,23 @@ seed) and `item-toggle` (Select toggles the B item: name registration never fini
 Both build safely; the clash is in behaviour, not bytes. `dungeon-music` is on hold
 too: it passes every FCEUX test, but dungeon music plays wrong on hardware.
 
+## Graphics
+
+Redux ships its graphics as whole blocks. Reloaded keeps many of the original blocks,
+some moved or copied (the dungeon set nine times), and its graphics packs redraw
+others. `graphics` finds every copy of each block in the seed, by windows of the
+original bytes, and writes Redux's version of a tile only where the seed still has the
+original tile. A pack's own tile (your hero, an NPC set) always wins.
+
+| Group | Blocks | What it draws |
+|---|---|---|
+| `graphics` | `data_00a`, `data_00b`, `data_01b`, `data_01c`, `data_02a`, `data_03f-h` | Intro and title, font, hearts and icons, dungeon walls and floors, bosses, Ganon, Zelda |
+| `graphics-overworld` | `data_02b` | Overworld tiles (not yet tested in play: Redux drew them for its own column layouts) |
+
+Not ported: `data_01a` (Link, items, sword) and `data_03a-e` (enemies, NPCs), which
+the graphics packs replace. Tiles `$59` and `$62` are excluded: Reloaded uses `$62`
+as the dash in "LEVEL-7".
+
 ## Keeping up with Redux
 
 Redux is an active project. `PINS` records the Redux and Asar commits Remuxed is built
@@ -122,5 +139,5 @@ Run it by hand with `mods/redux/upstream-check -n` to print the result without n
 ## Next
 
 - Copy/Erase and the item toggle (on hold, above)
-- Redux's graphics, where Reloaded's packs do not set the same tiles
+- `graphics-overworld`, tested in play
 - `zelda-rando gen --mod redux:FEATURE`
