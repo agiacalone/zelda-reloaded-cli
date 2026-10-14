@@ -1,8 +1,9 @@
 # redux (experimental)
 
 > [!WARNING]
-> **Experimental.** Two features so far, the automap and the dungeon automap, tested on the five preset seeds in
-> FCEUX and on hardware. It is not yet wired into `zelda-rando gen`.
+> **Experimental.** Two features so far. The automap is tested on the five preset seeds
+> in FCEUX and on hardware; the dungeon automap is not yet tested in play. Neither is
+> wired into `zelda-rando gen` yet.
 
 **Zelda Remuxed** puts features of [The Legend of Zelda Redux](https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux)
 (ShadowOne333 and contributors, GPL-3) onto a Zelda [reloaded] seed. Redux improves the

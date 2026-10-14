@@ -10,3 +10,6 @@
 # Third-party patches are supplied by the user, never committed.
 *.ips
 *.zip
+
+# Python bytecode from running the tools.
+__pycache__/
