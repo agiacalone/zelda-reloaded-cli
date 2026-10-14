@@ -6,9 +6,9 @@ see the [main README](../../README.md) and `zelda-rando gen --mod redux`.
 
 > [!NOTE]
 > Every feature below is tested in FCEUX on the five preset seeds. The automap, dungeon
-> automap, HUD, dungeon music, sword, item drops and graphics have also been played on a
-> Steam Deck (RetroDECK, FCEUmm); Copy/Erase and the item toggle are tested in FCEUX only
-> so far. Several fixes were found only in play, so new features get a hardware pass
+> automap, HUD, Copy/Erase, dungeon music, sword, item drops and graphics have also been
+> played on a Steam Deck (RetroDECK, FCEUmm); the item toggle is tested in FCEUX only so
+> far. Several fixes were found only in play, so new features get a hardware pass
 > before they ship.
 
 **Zelda Remuxed** puts features of [The Legend of Zelda Redux](https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux)
