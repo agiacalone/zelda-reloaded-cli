@@ -90,6 +90,22 @@ that is how Redux patches the original. It cannot tell when Redux overwrites ori
 content that another Redux feature moves out of the way first. "RETRY" was lost that
 way. Each port is therefore also played through its menus, not only built.
 
+## Features that need no edits
+
+These touch nothing Reloaded changed, build together without overwriting one another,
+and pass a new game, a death, a save and a reload in FCEUX:
+
+| Feature | Redux file | What it does |
+|---|---|---|
+| `save-hearts` | `menus/save_hearts.asm` | Keep the hearts you saved with (at least 3) |
+| `fix-bait`, `fix-candle`, `fix-cave-timer`, `fix-level1-door`, `fix-keyhole`, `fix-beam`, `fix-leave-cave`, `fix-scroll` | `bugfixes/*.asm` | Redux's eight bug fixes |
+| `sword-draw`, `sword-swing` | `gameplay/sword_*.asm` | The diagonal sword swing |
+| `dungeon-music` | `music/dungeon_music.asm` | Dungeon music variations |
+
+**On hold:** `copy-erase` (Redux's file screen: names are never saved on a Reloaded
+seed) and `item-toggle` (Select toggles the B item: name registration never finishes).
+Both build safely; the clash is in behaviour, not bytes.
+
 ## Keeping up with Redux
 
 Redux is an active project. `PINS` records the Redux and Asar commits Remuxed is built
@@ -105,6 +121,6 @@ Run it by hand with `mods/redux/upstream-check -n` to print the result without n
 
 ## Next
 
-- The Redux features that do not touch Reloaded's changes: Copy/Erase, keep hearts on
-  load, the bug fixes, Select to toggle the B item, diagonal sword, dungeon music
+- Copy/Erase and the item toggle (on hold, above)
+- Redux's graphics, where Reloaded's packs do not set the same tiles
 - `zelda-rando gen --mod redux:FEATURE`

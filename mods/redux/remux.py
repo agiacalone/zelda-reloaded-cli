@@ -260,7 +260,36 @@ FEATURES = {
     "arrows": ("code/gameplay/arrows.asm", arrows_edits, no_extra),
     "rupees": ("code/gameplay/rupee.asm", rupee_edits, no_extra),
     "hud-layout": ("code/gameplay/move_maps.asm", hud_layout_edits, no_extra),
+    # Features that touch nothing Reloaded changed.
+    "save-hearts": ("code/menus/save_hearts.asm", no_edits, no_extra),
+    "fix-bait": ("code/bugfixes/bait_keep_fix.asm", no_edits, no_extra),
+    "fix-candle": ("code/bugfixes/candle_flame_invulnerable.asm", no_edits, no_extra),
+    "fix-cave-timer": ("code/bugfixes/cave_room_timer.asm", no_edits, no_extra),
+    "fix-level1-door": ("code/bugfixes/dungeon_front_room.asm", no_edits, no_extra),
+    "fix-keyhole": ("code/bugfixes/khananakey_fix.asm", no_edits, no_extra),
+    "fix-beam": ("code/bugfixes/magic_beam_align.asm", no_edits, no_extra),
+    "fix-leave-cave": ("code/bugfixes/overworld_leave_cave.asm", no_edits, no_extra),
+    "fix-scroll": ("code/bugfixes/overworld_scroll_timing.asm", no_edits, no_extra),
+    "sword-draw": ("code/gameplay/sword_draw.asm", no_edits, no_extra),
+    "sword-swing": ("code/gameplay/sword_swing.asm", no_edits, no_extra),
+    "dungeon-music": ("code/music/dungeon_music.asm", no_edits, no_extra),
 }
+# On hold: they build safely but break name registration on a Reloaded seed.
+#   copy-erase  (code/menus/menu_tweaks.asm): the name is never saved; Redux's
+#               file screen clashes with Reloaded's save handling.
+#   item-toggle (code/gameplay/item_toggle.asm): its routine at bank 2 $B7A8
+#               assumes bank 2 is mapped; registration never finishes.
+
+
+def redux_order(redux, features):
+    """Sort features into the order Redux's code/main.asm includes them; some
+    files patch code that earlier ones wrote."""
+    main = (pathlib.Path(redux) / "code/main.asm").read_text()
+    pos = {name: main.find(path.split("/", 1)[1]) for name, (path, _, _) in FEATURES.items()}
+    missing = [f for f in features if pos[f] < 0]
+    if missing:
+        raise RemuxError(f"not in Redux's main.asm (renamed upstream?): {', '.join(missing)}")
+    return sorted(features, key=lambda f: pos[f])
 
 # --------------------------------------------------------------------- glue
 
@@ -405,6 +434,7 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
     if len(seed) != HDR + 16 * BANK:
         raise RemuxError("seed must be a 256 KB Zelda [reloaded] ROM")
 
+    features = redux_order(redux, features)
     with tempfile.TemporaryDirectory(prefix="remux-") as tmp:
         work = pathlib.Path(tmp)
         shutil.copytree(pathlib.Path(redux) / "code", work / "code")
