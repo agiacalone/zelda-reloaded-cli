@@ -78,7 +78,17 @@ count).
 | The HUD's icons and hearts are in Redux's whole-bank graphics | Ten tiles are copied, into bank 2 and Reloaded's tile copies; each tile block has its own anchor |
 | Redux's "TRIFORCE OF WISDOM" caption: Reloaded draws the caption its own way, so "OF WISDOM" landed on "TRIFORCE" | Left out |
 | The subscreen says "SAVE: UP+A"; Reloaded's save takes Up+A on controller 2 or Up+Select+A on controller 1 | Reloaded's check (bank 5 `$AD2A`, `$AD2C`) now takes Up+A on controller 1, as in Redux |
+| Redux renames the dungeon caption "LEVEL-7" to "DUNGEON-7" and moves the digit; Reloaded draws its own caption, so the digit was lost | Keep "LEVEL-7" and move it above the map (`$2042` to `$2056`). The caption is kept in battery RAM, so the power-on stub re-points it for older save files too |
+| Redux's small "x" is tile `$62`, which Reloaded uses as the dash in "LEVEL-7" | The counters keep the original "X" (tile `$21`) |
+| The dungeon HUD attributes at bank 6 `$A2CD` overwrite the end of the game-over menu ("RETRY"); Redux moves that menu text in a feature not ported here | Moved to `$B100` |
 | The arrow-drop routine runs from RAM, in a part of bank 1 the mirrored seeds fill | A RAM routine area: the power-on stub copies bank 1 `$9EC4` to RAM `$7FA0-$7FBF`, which nothing else uses |
+
+### A blind spot of the safety check
+
+The check accepts a write over a byte Reloaded left as in the original game, because
+that is how Redux patches the original. It cannot tell when Redux overwrites original
+content that another Redux feature moves out of the way first. "RETRY" was lost that
+way. Each port is therefore also played through its menus, not only built.
 
 ## Keeping up with Redux
 

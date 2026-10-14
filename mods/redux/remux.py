@@ -79,6 +79,7 @@ def automap_edits(work, seed_dir, features):
          "\tjmp !BankSwap"),
         # Fast life fill: Reloaded's own FastFill rewrote this code. Drop it.
         (r"%org\(\$B1F2,5\).*?\n\tinc \$066F[^\n]*\n\trts\n", ""),
+        (r"(!LOW_X\s*=\s*)\$62", r"\g<1>$21"),	# see hud_subscreen_edits
         # The picture's address is also built from an immediate.
         (r"\tadc #\$AD(\s)", r"\tadc #$B9\1"),
         # Redux draws the map into the four tile banks its overworld animation
@@ -122,9 +123,20 @@ def hud_layout_edits(work, seed_dir, features):
     return [
         # The status-bar template: Reloaded uses bank 5 $AC70.
         (r"%org\(\$AC70,5\)", "%org($AE10,5)"),
+        # Dungeon HUD attributes: Redux puts them at bank 6 $A2CD, over the
+        # end of the game-over menu ("RETRY"), which its caution-screen
+        # feature moves first. That feature is not ported; use free space.
+        (r"%org\(\$A2CD,6\)", "%org($B100,6)"),
         # Redux's dot offsets and mini-maps are for the original dungeons.
         # Reloaded builds its own; transform_hud_layout shifts those instead.
         (r"\n; DUNGEONS \\\\.*?(?=\n;\*+\n;\tChange \"LEVEL-0\")", "\n"),
+        (r"(!LOW_X\s*=\s*)\$62", r"\g<1>$21"),	# see hud_subscreen_edits
+        # Redux renames "LEVEL-7" to "DUNGEON-7" and moves the digit to fit,
+        # but the digit then lands past the end of Reloaded's caption. Keep
+        # "LEVEL-7"; just move it above the map, as Redux does (PPU $2042 ->
+        # $2056). The digit is part of the same transfer, so it moves too.
+        (r"; Move Dungeon numeral two tiles to the right.*?\tdb \"DUNGEON-\"[^\n]*\n",
+         "%org($9D05,6)\n\tdb $56\t; LEVEL-x caption: $2042 -> $2056\n"),
         # Region colours for the map at tile columns 22-29.
         (r"\tdb \$44,\$55,\$55,\$00,\$00,\$C0,\$FF,\$70[^\n]*\n\tdb \$44,\$55,\$05,\$00,\$00,\$C0,\$AF,\$3A[^\n]*\n",
          attribute_rows(grid, [0x44, 0x55, 0x55, 0x00, 0x00, 0xC0, 0xFF, 0x70,
@@ -146,6 +158,11 @@ def hud_subscreen_edits(work, seed_dir, features):
     return [
         # Link's Level 3 palette: Reloaded picks its own dungeon palettes.
         (r"%org\(\$9607,6\)[^\n]*\n\tdb \$0F,\$29,\$27,\$17[^\n]*\n", ""),
+        # Redux's small "x" is tile $62, which Reloaded's "LEVEL-" caption
+        # uses as its dash. Keep the original "X" (tile $21) for counters.
+        (r"\tlda #\$62\t; Originally A9 21[^\n]*Rupee icon[^\n]*\n", "\tlda #$21\n"),
+        (r"\tlda #\$62\t; Originally A9 21[^\n]*Key counter[^\n]*\n", "\tlda #$21\n"),
+        (r"\tldy #\$62\t; Originally A0 21[^\n]*\n", "\tldy #$21\n"),
         # "TRIFORCE OF WISDOM": Reloaded draws the caption its own way, so
         # moving "TRIFORCE" never takes effect and "OF WISDOM" lands on it.
         (r"; Change \"TRIFORCE\" for \"TRIFORCE OF WISDOM\".*?\tdw triforce_outline\n", ""),
@@ -153,15 +170,15 @@ def hud_subscreen_edits(work, seed_dir, features):
 
 
 def hud_extra(work, redux):
-    """The status-bar tiles Redux's HUD draws with: small x ($59, $62), bomb,
-    infinity, arrow, empty heart ($61-$66), full heart, rupee and key ($F2,
-    $F7, $F9). Copied from Redux's graphics one tile at a time, so Reloaded's
+    """The status-bar tiles Redux's HUD draws with: bomb, infinity, arrow and
+    empty heart ($61, $63-$66), full heart, rupee and key ($F2, $F7, $F9).
+    Not its small "x" ($62): Reloaded uses that tile as a dash. Copied from Redux's graphics one tile at a time, so Reloaded's
     own font and hero graphics stay."""
     gfx = pathlib.Path(redux) / "code/gfx"
     b = (gfx / "data_01b.bin").read_bytes()    # bank 2 from $877F; tile $50 at +$500
     c = (gfx / "data_01c.bin").read_bytes()    # bank 2 from $8E7F; tile $F2 at +0
     asm = []
-    for t in [0x59] + list(range(0x61, 0x67)):
+    for t in [0x61, 0x63, 0x64, 0x65, 0x66]:
         (work / f"tile{t:02X}.bin").write_bytes(b[0x500 + (t - 0x50) * 16:0x500 + (t - 0x4F) * 16])
         asm.append(f'%org(${0x8C7F + (t - 0x50) * 16:04X},2)\n\tincbin "tile{t:02X}.bin"')
     # The subscreen says "SAVE: UP+A". Reloaded's own save check (bank 5
@@ -179,6 +196,8 @@ def rupee_edits(work, seed_dir, features):
     return [
         (r"%org\(\$AC70,5\)", "%org($AE10,5)"),
         (r"lda \$AC70,y", "lda $AE10,y"),
+        (r"(!LOW_X\s*=\s*)\$62", r"\g<1>$21"),	# see hud_subscreen_edits
+        (r"\tlda #\$62", "\tlda #$21"),
     ]
 
 
@@ -258,7 +277,7 @@ RemuxCopyStub:
 \tsta $7FA0,x
 \tdex
 \tbpl -
-\tlda #$A5
+{extra}\tlda #$A5
 \tsta $7FFF
 \tjmp $8D00
 %org($8D31,1)
@@ -404,7 +423,14 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
             includes.append(f"incsrc {path}")
             (work / f"{name}-extra.asm").write_text(make_extra(work, redux))
             includes.append(f"incsrc {name}-extra.asm")
-        (work / "glue.asm").write_text(GLUE)
+        extra = ""
+        if "hud-layout" in features:
+            # The dungeon caption ("LEVEL-7") is a screen write kept in
+            # battery RAM at $681C, filled from ROM only when a save file is
+            # first created. Re-point it at every power-on, so files made
+            # before the HUD layout get the new position too.
+            extra = "\tlda #$56\t; dungeon caption: PPU $2042 -> $2056\n\tsta $681D\n"
+        (work / "glue.asm").write_text(GLUE.replace("{extra}", extra))
         (work / "main.asm").write_text("\n".join([
             "norom", "!headersize = $10", "optimize dp always", "dpbase 0",
             'incsrc "code/macros.asm"', *includes, "incsrc glue.asm", ""]))
