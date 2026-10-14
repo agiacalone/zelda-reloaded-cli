@@ -1,0 +1,7 @@
+# The commits Zelda Remuxed is built and tested against.
+# upstream-check compares the Redux pin with upstream's main branch weekly.
+REDUX_REPO=https://github.com/agiacalone/The-Legend-of-Zelda-Redux
+REDUX_UPSTREAM=https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux
+REDUX_COMMIT=f096f692a8900108713210c09e72545de5a4cf9e
+ASAR_REPO=https://github.com/RPGHacker/asar
+ASAR_COMMIT=b8c26234f0fae893aab8ec842670244309a3ab2f

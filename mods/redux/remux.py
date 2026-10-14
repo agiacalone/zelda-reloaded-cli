@@ -123,8 +123,17 @@ def automap_extra(work, redux):
     return '%org($8C7F,2)\n\tincbin "hearts.bin"\n'
 
 
+def no_edits(work, seed_dir):
+    return []
+
+
+def no_extra(work, redux):
+    return ""
+
+
 FEATURES = {
     "automap": ("code/gameplay/automap.asm", automap_edits, automap_extra),
+    "dungeon-automap": ("code/gameplay/dungeon_automap.asm", no_edits, no_extra),
 }
 
 # --------------------------------------------------------------------- glue

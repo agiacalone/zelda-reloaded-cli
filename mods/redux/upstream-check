@@ -1,0 +1,84 @@
+#!/usr/bin/env bash
+# upstream-check - does Zelda Remuxed still build against Redux's latest commit?
+#
+# Fetches upstream Zelda Redux (REDUX_UPSTREAM in PINS), builds every Remuxed
+# feature onto a reference seed with remux.py, and reports through ntfy-post
+# only when something changed: new upstream commits, or a pass/fail flip.
+# A failure names the source edit or address that stopped the build, which is
+# what needs adapting before the pin in PINS can move.
+#
+#   upstream-check            check now, notify on change
+#   upstream-check -n         check now, print only (no ntfy, state unchanged)
+#
+# Environment:
+#   ZR_ROM            unmodified Legend of Zelda (USA) ROM
+#   REMUX_CHECK_SEED  seed folder to build onto (default: the 2026-10-14 preset 01)
+#   ZR_HOME           default ~/.local/share/zelda-reloaded (Asar is in asar/)
+set -uo pipefail
+
+HERE=$(cd "$(dirname "$0")" && pwd)
+# shellcheck source=/dev/null
+. "$HERE/PINS"
+ZR_HOME=${ZR_HOME:-$HOME/.local/share/zelda-reloaded}
+ASAR=$ZR_HOME/asar/asar
+ROM=${ZR_ROM:-/mnt/es3/roms/curated/nes/Legend of Zelda, The (USA).nes}
+SEED=${REMUX_CHECK_SEED:-/mnt/es3/roms/extras/nes-randomizer-sessions/Zelda Reloaded 2026-10-14/BFEWOT86S}
+CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/zelda-remuxed/redux-upstream
+STATE=${XDG_STATE_HOME:-$HOME/.local/state}/zelda-remuxed
+FEATURES=(automap dungeon-automap)
+
+dry=0
+[[ ${1:-} == -n ]] && dry=1
+
+notify() {   # title, priority, message
+    if (( dry )); then printf '%s\n%s\n' "$1" "$3"; else ntfy-post -t "$1" -p "$2" -g zelda alerts "$3"; fi
+}
+
+for f in "$ASAR" "$ROM"; do
+    [[ -e $f ]] || { notify "Remuxed upstream check" high "missing: $f"; exit 2; }
+done
+
+mkdir -p "$STATE" "$(dirname "$CACHE")"
+if [[ -d $CACHE/.git ]]; then
+    git -C "$CACHE" fetch -q origin || { notify "Remuxed upstream check" default "git fetch failed"; exit 1; }
+    git -C "$CACHE" reset -q --hard origin/HEAD
+else
+    git clone -q "$REDUX_UPSTREAM" "$CACHE" || { notify "Remuxed upstream check" default "git clone failed"; exit 1; }
+fi
+head=$(git -C "$CACHE" rev-parse HEAD)
+behind=$(git -C "$CACHE" rev-list --count "$REDUX_COMMIT..$head" 2>/dev/null || echo "?")
+
+out=$(mktemp --suffix=.nes)
+trap 'rm -f "$out"' EXIT
+args=(); for f in "${FEATURES[@]}"; do args+=(--feature "$f"); done
+if log=$(python3 "$HERE/remux.py" --redux "$CACHE" --asar "$ASAR" "${args[@]}" "$ROM" "$SEED" "$out" 2>&1); then
+    result=pass
+else
+    result=fail
+fi
+rm -rf "$HERE/../../tools/__pycache__"
+
+key="$head $result"
+last=$(cat "$STATE/upstream-check" 2>/dev/null || true)
+summary="upstream ${head:0:7}, $behind commit(s) past the pin ${REDUX_COMMIT:0:7}"
+if [[ $result == pass && $behind == 0 ]]; then
+    msg="Remuxed builds; upstream is at the pin ${REDUX_COMMIT:0:7}."
+    prio=min
+elif [[ $result == pass ]]; then
+    msg="Remuxed still builds against $summary. The pin in mods/redux/PINS can move."
+    prio=low
+else
+    msg="Remuxed no longer builds against $summary:
+$(printf '%s\n' "$log" | tail -6)"
+    prio=default
+fi
+
+if (( dry )); then
+    printf '%s\n' "$msg"
+elif [[ $key != "$last" && $behind != 0 ]]; then
+    notify "Zelda Remuxed: upstream $result" "$prio" "$msg"
+    printf '%s\n' "$key" > "$STATE/upstream-check"
+else
+    printf '%s\n' "$key" > "$STATE/upstream-check"
+fi
+[[ $result == pass ]]

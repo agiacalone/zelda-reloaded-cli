@@ -1,7 +1,7 @@
 # redux (experimental)
 
 > [!WARNING]
-> **Experimental.** One feature so far, the automap, tested on the five preset seeds in
+> **Experimental.** Two features so far, the automap and the dungeon automap, tested on the five preset seeds in
 > FCEUX and on hardware. It is not yet wired into `zelda-rando gen`.
 
 **Zelda Remuxed** puts features of [The Legend of Zelda Redux](https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux)
@@ -56,9 +56,28 @@ quarter hearts, a map coloured by region, and a blinking position marker. On a s
 | Quarter-heart tiles live in Redux's whole-bank graphics | Only those four tiles are copied, into bank 2 and Reloaded's 10 tile copies |
 | The game's power-on RAM copy erases the saved maps | The copy stops at `$7F50`; a stub keeps Reloaded's `$7FFF` marker |
 
+## The dungeon automap
+
+`dungeon-automap` (tacoschip's, from Redux) needs no edits: it writes only free space
+and code Reloaded left as in the original, and the routines it calls are unchanged in
+the seeds checked. Rooms appear on the dungeon map as you enter them.
+
+## Keeping up with Redux
+
+Redux is an active project. `PINS` records the Redux and Asar commits Remuxed is built
+against. `upstream-check` fetches upstream Redux, builds every finished feature onto a
+reference seed, and posts to ntfy only when something changed:
+
+- upstream moved and Remuxed still builds: the pin can move
+- upstream moved and the build fails: the message names the source edit or the address
+  that stopped it, which is what needs adapting
+
+On reason it runs weekly from the user timer `remuxed-upstream.timer` (Monday 06:00).
+Run it by hand with `mods/redux/upstream-check -n` to print the result without notifying.
+
 ## Next
 
-- Redux's HUD layout (map right, life left), dungeon automap, arrow counter
+- Redux's HUD layout (map right, life left) and arrow counter
 - The Redux features that do not touch Reloaded's changes: Copy/Erase, keep hearts on
   load, the bug fixes, Select to toggle the B item, diagonal sword, dungeon music
 - `zelda-rando gen --mod redux:FEATURE`
