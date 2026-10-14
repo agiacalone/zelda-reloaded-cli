@@ -48,7 +48,7 @@ quarter hearts, a map coloured by region, and a blinking position marker. On a s
 |---|---|
 | Redux's map picture is of the original Hyrule | `tools/automap.py` draws the seed's own from its spoiler map |
 | Redux's region colours are chosen for the original Hyrule | Each HUD palette area (4 screens across) picks green, grey or brown from the seed's terrain |
-| Picture at bank 5 `$AD00`, blocks at bank 5 `$AF20` and bank 2 `$B000`: space Reloaded uses | Moved to `$B900`, `$BB00` and `$B800` |
+| Picture at bank 5 `$AD00`, blocks at bank 5 `$AF20` and bank 2 `$B000`: space Reloaded uses | Moved to `$B900`, `$BB00` and `$BA00` |
 | RAM `$7F10-$7F29`: Reloaded copies code there at power-on | Moved; see the RAM map below |
 | Two fixed-bank routines; Reloaded leaves only small gaps in bank 15 | One moves to `$FFDB`; the other splits into a bank 6 check and a 13-byte stub at `$FF42` |
 | Redux draws the map into the four tile banks of its overworld animation | Reloaded has one tile bank: draw once, never switch |
@@ -83,6 +83,17 @@ count).
 | The dungeon HUD attributes at bank 6 `$A2CD` overwrite the end of the game-over menu ("RETRY"); Redux moves that menu text in a feature not ported here | Moved to `$B100` |
 | The arrow-drop routine runs from RAM, in a part of bank 1 the mirrored seeds fill | A RAM routine area: the power-on stub copies bank 1 `$9EC4` to RAM `$7F84-$7F9F` (see the RAM map) |
 
+### Features that overwrite each other
+
+The byte check compares each write with the seed, so it cannot see one feature
+overwrite another. `check_overwrites` builds the features one more at a time, in
+Redux's order, and stops if a feature changes a byte an earlier one wrote, apart from
+the overwrites Redux documents (`ALLOWED_OVERWRITES`: `move_maps.asm` and `rupee.asm`
+patch the HUD, arrow and automap code). It caught the item toggle (bank 2
+`$B7A8-$B85B`) overwriting the automap's save code, which the port had placed at
+`$B800`; that broke name registration. The automap block now sits at `$BA00`. The
+check adds a minute or so per build.
+
 ### A blind spot of the safety check
 
 The check accepts a write over a byte Reloaded left as in the original game, because
@@ -100,10 +111,10 @@ and pass a new game, a death, a save and a reload in FCEUX:
 | `save-hearts` | `menus/save_hearts.asm` | Keep the hearts you saved with (at least 3) |
 | `fix-bait`, `fix-candle`, `fix-cave-timer`, `fix-level1-door`, `fix-keyhole`, `fix-beam`, `fix-leave-cave`, `fix-scroll` | `bugfixes/*.asm` | Redux's eight bug fixes |
 | `sword-draw`, `sword-swing` | `gameplay/sword_*.asm` | The diagonal sword swing |
+| `item-toggle` | `gameplay/item_toggle.asm` | Select switches the B item instead of pausing |
 
 **On hold:** `copy-erase` (Redux's file screen: new files work since the RAM move, but
-files made through Reloaded's own screen show as empty) and `item-toggle` (Select
-toggles the B item: name registration never finishes).
+files made through Reloaded's own screen show as empty).
 Both build safely; the clash is in behaviour, not bytes. `dungeon-music` is on hold
 too: it passes every FCEUX test, but dungeon music plays wrong on hardware.
 
@@ -162,6 +173,6 @@ Run it by hand with `mods/redux/upstream-check -n` to print the result without n
 
 ## Next
 
-- Copy/Erase and the item toggle (on hold, above)
+- Copy/Erase (on hold, above)
 - `graphics-overworld`, tested in play
 - `zelda-rando gen --mod redux:FEATURE`

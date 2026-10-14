@@ -53,7 +53,7 @@ def automap_edits(work, seed_dir, features):
         (r'incbin "code/gameplay/automap_tiles.bin"', f'incbin "{picture}"'),
         # Two blocks in space Reloaded uses.
         (r"%org\(\$AF20,5\)", "%org($BB00,5)"),
-        (r"%org\(\$B000,2\)", "%org($B800,2)"),
+        (r"%org\(\$B000,2\)", "%org($BA00,2)"),	# clear of item-toggle ($B7A8-$B85B)
         # RAM. Reloaded copies code into $7F10-$7F25 at power-on, and its
         # graphics streamer (bank 3 $BA38) stages 64-byte chunks at
         # $7F40-$7F83 whenever a room loads new enemy or NPC graphics.
@@ -267,6 +267,7 @@ def no_extra(work, redux):
 FEATURES = {
     "automap": ("code/gameplay/automap.asm", automap_edits, automap_extra),
     "dungeon-automap": ("code/gameplay/dungeon_automap.asm", no_edits, no_extra),
+    "item-toggle": ("code/gameplay/item_toggle.asm", no_edits, no_extra),
     # Redux's HUD: these four go together and in this order (move_maps.asm
     # rewrites code from the other three and from the automap).
     "hud-subscreen": ("code/menus/hud_and_subscreen.asm", hud_subscreen_edits, hud_extra),
@@ -291,8 +292,6 @@ FEATURES = {
 #               new RAM layout a new file registers and plays, but files made
 #               through Reloaded's own file screen show as empty, inviting the
 #               player to overwrite them. Needs Reloaded's file-validity check.
-#   item-toggle (code/gameplay/item_toggle.asm): its routine at bank 2 $B7A8
-#               assumes bank 2 is mapped; registration never finishes.
 # On hold: builds safely and passes FCEUX tests, but dungeon music plays wrong
 # on hardware (heard on the Steam Deck, 2026-10-14).
 #   dungeon-music (code/music/dungeon_music.asm): hooks the music sequencer in
@@ -527,18 +526,9 @@ def apply_graphics(out, seed, original, redux, groups):  # noqa: C901
 
 # --------------------------------------------------------------------- main
 
-def remux(redux, asar, features, original_path, seed_dir, out_path):
-    seed_dir = pathlib.Path(seed_dir)
-    roms = list(seed_dir.glob("*.nes"))
-    if len(roms) != 1:
-        raise RemuxError(f"{seed_dir}: expected one .nes")
-    seed = bytearray(roms[0].read_bytes())
-    original = pathlib.Path(original_path).read_bytes()
-    if len(seed) != HDR + 16 * BANK:
-        raise RemuxError("seed must be a 256 KB Zelda [reloaded] ROM")
-
-    gfx_only = [f for f in features if f in GFX_GROUPS]
-    features = redux_order(redux, [f for f in features if f not in GFX_GROUPS]) + gfx_only
+def assemble(redux, asar, include, features, seed, seed_dir):
+    """Assemble the features in `include` (Redux order) onto the seed. `features`
+    is the whole build, which some features' edits depend on."""
     with tempfile.TemporaryDirectory(prefix="remux-") as tmp:
         work = pathlib.Path(tmp)
         shutil.copytree(pathlib.Path(redux) / "code", work / "code")
@@ -550,7 +540,7 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
         ], "macros.asm")
         (work / "code/macros.asm").write_text(macros)
         includes = []
-        for name in [f for f in features if f in FEATURES]:
+        for name in [f for f in include if f in FEATURES]:
             path, make_edits, make_extra = FEATURES[name]
             src = (work / path).read_text()
             (work / path).write_text(edit(src, make_edits(work, seed_dir, features), name))
@@ -574,8 +564,55 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
                            cwd=work, capture_output=True, text=True)
         if r.returncode:
             raise RemuxError("asar failed:\n" + (r.stdout + r.stderr).strip())
-        out = bytearray(target.read_bytes())
+        return bytearray(target.read_bytes())
 
+
+# Overwrites Redux intends: move_maps.asm (hud-layout) rewrites code from the
+# HUD, arrow, automap and rupee files, and rupee.asm replaces arrows.asm's
+# status-bar template. Any other byte written by two features is a collision.
+ALLOWED_OVERWRITES = {
+    ("hud-layout", "hud-subscreen"), ("hud-layout", "arrows"), ("hud-layout", "automap"),
+    ("hud-layout", "rupees"), ("rupees", "arrows"), ("rupees", "hud-subscreen"),
+}
+
+
+def check_overwrites(redux, asar, features, seed, seed_dir):
+    """Build the features one more at a time, in Redux order, and stop if a
+    feature changes a byte an earlier feature wrote (the item toggle once
+    overwrote the automap's save code this way, unseen by the byte check)."""
+    order = [f for f in features if f in FEATURES]
+    if len(order) < 2:
+        return
+    owner = {}
+    prev = assemble(redux, asar, [], features, seed, seed_dir)        # glue only
+    clashes = {}
+    for k, f in enumerate(order):
+        cur = assemble(redux, asar, order[:k + 1], features, seed, seed_dir)
+        for i in range(len(cur)):
+            if cur[i] != prev[i]:
+                if i in owner and (f, owner[i]) not in ALLOWED_OVERWRITES:
+                    clashes.setdefault((f, owner[i]), []).append(i)
+                owner[i] = f
+        prev = cur
+    if clashes:
+        lines = [f"{a} overwrites {b}: {len(v)} bytes from {where(v[0])}" for (a, b), v in clashes.items()]
+        raise RemuxError("features overwrite each other:\n  " + "\n  ".join(lines))
+
+
+def remux(redux, asar, features, original_path, seed_dir, out_path):
+    seed_dir = pathlib.Path(seed_dir)
+    roms = list(seed_dir.glob("*.nes"))
+    if len(roms) != 1:
+        raise RemuxError(f"{seed_dir}: expected one .nes")
+    seed = bytearray(roms[0].read_bytes())
+    original = pathlib.Path(original_path).read_bytes()
+    if len(seed) != HDR + 16 * BANK:
+        raise RemuxError("seed must be a 256 KB Zelda [reloaded] ROM")
+
+    gfx_only = [f for f in features if f in GFX_GROUPS]
+    features = redux_order(redux, [f for f in features if f not in GFX_GROUPS]) + gfx_only
+    out = assemble(redux, asar, features, features, seed, seed_dir)
+    check_overwrites(redux, asar, features, seed, seed_dir)
     if len(out) != len(seed):
         raise RemuxError("assembly changed the ROM size")
     glue = {file_off(b, a): v for b, a, v in GLUE_SITES}
