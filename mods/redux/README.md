@@ -100,11 +100,11 @@ and pass a new game, a death, a save and a reload in FCEUX:
 | `save-hearts` | `menus/save_hearts.asm` | Keep the hearts you saved with (at least 3) |
 | `fix-bait`, `fix-candle`, `fix-cave-timer`, `fix-level1-door`, `fix-keyhole`, `fix-beam`, `fix-leave-cave`, `fix-scroll` | `bugfixes/*.asm` | Redux's eight bug fixes |
 | `sword-draw`, `sword-swing` | `gameplay/sword_*.asm` | The diagonal sword swing |
-| `dungeon-music` | `music/dungeon_music.asm` | Dungeon music variations |
 
 **On hold:** `copy-erase` (Redux's file screen: names are never saved on a Reloaded
 seed) and `item-toggle` (Select toggles the B item: name registration never finishes).
-Both build safely; the clash is in behaviour, not bytes.
+Both build safely; the clash is in behaviour, not bytes. `dungeon-music` is on hold
+too: it passes every FCEUX test, but dungeon music plays wrong on hardware.
 
 ## Keeping up with Redux
 

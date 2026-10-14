@@ -272,13 +272,16 @@ FEATURES = {
     "fix-scroll": ("code/bugfixes/overworld_scroll_timing.asm", no_edits, no_extra),
     "sword-draw": ("code/gameplay/sword_draw.asm", no_edits, no_extra),
     "sword-swing": ("code/gameplay/sword_swing.asm", no_edits, no_extra),
-    "dungeon-music": ("code/music/dungeon_music.asm", no_edits, no_extra),
 }
 # On hold: they build safely but break name registration on a Reloaded seed.
 #   copy-erase  (code/menus/menu_tweaks.asm): the name is never saved; Redux's
 #               file screen clashes with Reloaded's save handling.
 #   item-toggle (code/gameplay/item_toggle.asm): its routine at bank 2 $B7A8
 #               assumes bank 2 is mapped; registration never finishes.
+# On hold: builds safely and passes FCEUX tests, but dungeon music plays wrong
+# on hardware (heard on the Steam Deck, 2026-10-14).
+#   dungeon-music (code/music/dungeon_music.asm): hooks the music sequencer in
+#               bank 0 and picks songs by the level number at $10.
 
 
 def redux_order(redux, features):

@@ -25,7 +25,7 @@ ROM=${ZR_ROM:-/mnt/es3/roms/curated/nes/Legend of Zelda, The (USA).nes}
 SEED=${REMUX_CHECK_SEED:-/mnt/es3/roms/extras/nes-randomizer-sessions/Zelda Reloaded 2026-10-14/BFEWOT86S}
 CACHE=${XDG_CACHE_HOME:-$HOME/.cache}/zelda-remuxed/redux-upstream
 STATE=${XDG_STATE_HOME:-$HOME/.local/state}/zelda-remuxed
-FEATURES=(hud-subscreen arrows automap rupees hud-layout dungeon-automap save-hearts fix-bait fix-candle fix-cave-timer fix-level1-door fix-keyhole fix-beam fix-leave-cave fix-scroll sword-draw sword-swing dungeon-music)
+FEATURES=(hud-subscreen arrows automap rupees hud-layout dungeon-automap save-hearts fix-bait fix-candle fix-cave-timer fix-level1-door fix-keyhole fix-beam fix-leave-cave fix-scroll sword-draw sword-swing)
 
 dry=0
 [[ ${1:-} == -n ]] && dry=1
