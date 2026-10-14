@@ -41,7 +41,7 @@ class RemuxError(Exception):
 
 # ----------------------------------------------------------------- features
 
-def automap_edits(work, seed_dir):
+def automap_edits(work, seed_dir, features):
     """Redux's Automap Plus (snarfblam's patch, disassembled by ShadowOne333)."""
     picture = work / "map.bin"
     picture.write_bytes(automap.encode(automap.picture_from_png(seed_dir / "spoilers/min/Overworld.png")))
@@ -86,32 +86,126 @@ def automap_edits(work, seed_dir):
         (r"jmp DrawMapAllBanks", "jmp DoDrawWholeMap"),
         (r"\tjsr SetChrBank_6 ?\n", "\t; (no tile-bank switch on Reloaded)\n"),
         (r"(ClearAndReturn:[^\n]*\n)\tlda !disable_animation", r"\1\tlda #$01\t; animation is always off on Reloaded"),
-        # HUD icons: Redux's column is rupee, key, arrow, bomb, which needs
-        # the arrow counter. Keep the original column until that is ported.
-        (r"db \$20,\$6B,\$84,!RUPEE,!KEY,!ARROW,!BOMB,\$FF", "db $20,$6B,$84,!RUPEE,$24,!KEY,!BOMB,$FF"),
-        # Region colours, from the seed's terrain.
+        # Region colours, from the seed's terrain (original layout: map at
+        # tile columns 2-9). hud-layout sets them again for its layout.
         (r"\tdb \$C0,\$FF,\$70,\$00,\$00,\$44,\$55,\$55[^\n]*\n\tdb \$C0,\$AF,\$36,\$00,\$00,\$44,\$55,\$55[^\n]*\n",
-         attribute_rows(grid)),
-    ]
+         attribute_rows(grid, [0xC0, 0xFF, 0x70, 0x00, 0x00, 0x44, 0x55, 0x55,
+                               0xC0, 0xAF, 0x36, 0x00, 0x00, 0x44, 0x55, 0x55], 2)),
+    ] + ([] if "arrows" in features else [
+        # HUD icons: Redux's column is rupee, key, arrow, bomb, which needs
+        # the arrow counter. Without it, keep the original column.
+        (r"db \$20,\$6B,\$84,!RUPEE,!KEY,!ARROW,!BOMB,\$FF", "db $20,$6B,$84,!RUPEE,$24,!KEY,!BOMB,$FF"),
+    ])
 
 
-def attribute_rows(grid):
+def attribute_rows(grid, base, col0):
     """The HUD attribute bytes $23C0-$23CF with the map's palette areas set.
 
-    The original-layout map sits at tile columns 2-9, rows 3-6. An attribute
+    The map is 8 tiles wide from tile column col0, on rows 3-6. An attribute
     byte covers 4x4 tiles in 2x2 quadrants (TL, TR, BL, BR = bits 0-1, 2-3,
     4-5, 6-7)."""
-    base = [0xC0, 0xFF, 0x70, 0x00, 0x00, 0x44, 0x55, 0x55,
-            0xC0, 0xAF, 0x36, 0x00, 0x00, 0x44, 0x55, 0x55]
+    base = list(base)
     rowband = {3: 0, 4: 1, 5: 1, 6: 2}
     for trow in (3, 4, 5, 6):
-        for tcol in range(2, 10):
-            pal = grid[rowband[trow]][(tcol - 2) // 2]
+        for tcol in range(col0, col0 + 8):
+            pal = grid[rowband[trow]][(tcol - col0) // 2]
             i = (trow // 4) * 8 + tcol // 4
             shift = ((trow % 4) // 2) * 4 + ((tcol % 4) // 2) * 2
             base[i] = (base[i] & ~(3 << shift)) | (pal << shift)
     line = lambda b: "\tdb " + ",".join(f"${v:02X}" for v in b) + "\t; set by remux.py from the seed's terrain\n"
     return line(base[:8]) + line(base[8:])
+
+
+def hud_layout_edits(work, seed_dir, features):
+    """Redux's HUD layout: life on the left, map on the right."""
+    grid = automap.regions(seed_dir / "spoilers/min/Overworld.png")
+    return [
+        # The status-bar template: Reloaded uses bank 5 $AC70.
+        (r"%org\(\$AC70,5\)", "%org($AE10,5)"),
+        # Redux's dot offsets and mini-maps are for the original dungeons.
+        # Reloaded builds its own; transform_hud_layout shifts those instead.
+        (r"\n; DUNGEONS \\\\.*?(?=\n;\*+\n;\tChange \"LEVEL-0\")", "\n"),
+        # Region colours for the map at tile columns 22-29.
+        (r"\tdb \$44,\$55,\$55,\$00,\$00,\$C0,\$FF,\$70[^\n]*\n\tdb \$44,\$55,\$05,\$00,\$00,\$C0,\$AF,\$3A[^\n]*\n",
+         attribute_rows(grid, [0x44, 0x55, 0x55, 0x00, 0x00, 0xC0, 0xFF, 0x70,
+                               0x44, 0x55, 0x05, 0x00, 0x00, 0xC0, 0xAF, 0x3A], 22)),
+    ]
+
+
+def arrows_edits(work, seed_dir, features):
+    """Redux's arrow counter. Its arrow-drop routine runs from RAM; move it to
+    the RAM routine area (ROM $9EC4, run at $7FA0) and point the hook there."""
+    return [
+        (r"\tjmp \$7EE1", "\tjmp $7FA0"),
+        (r"%org\(\$B751,1\)[^\n]*\n", "org $9EC4-$8000+$4000+!headersize\nbase $7FA0\t; RAM routine area\n"),
+    ]
+
+
+def hud_subscreen_edits(work, seed_dir, features):
+    """Redux's HUD and subscreen tweaks."""
+    return [
+        # Link's Level 3 palette: Reloaded picks its own dungeon palettes.
+        (r"%org\(\$9607,6\)[^\n]*\n\tdb \$0F,\$29,\$27,\$17[^\n]*\n", ""),
+    ]
+
+
+def hud_extra(work, redux):
+    """The status-bar tiles Redux's HUD draws with: small x ($59, $62), bomb,
+    infinity, arrow, empty heart ($61-$66), full heart, rupee and key ($F2,
+    $F7, $F9). Copied from Redux's graphics one tile at a time, so Reloaded's
+    own font and hero graphics stay."""
+    gfx = pathlib.Path(redux) / "code/gfx"
+    b = (gfx / "data_01b.bin").read_bytes()    # bank 2 from $877F; tile $50 at +$500
+    c = (gfx / "data_01c.bin").read_bytes()    # bank 2 from $8E7F; tile $F2 at +0
+    asm = []
+    for t in [0x59] + list(range(0x61, 0x67)):
+        (work / f"tile{t:02X}.bin").write_bytes(b[0x500 + (t - 0x50) * 16:0x500 + (t - 0x4F) * 16])
+        asm.append(f'%org(${0x8C7F + (t - 0x50) * 16:04X},2)\n\tincbin "tile{t:02X}.bin"')
+    for t in (0xF2, 0xF7, 0xF9):
+        (work / f"tile{t:02X}.bin").write_bytes(c[(t - 0xF2) * 16:(t - 0xF1) * 16])
+        asm.append(f'%org(${0x8E7F + (t - 0xF2) * 16:04X},2)\n\tincbin "tile{t:02X}.bin"')
+    return "\n".join(asm) + "\n"
+
+
+def rupee_edits(work, seed_dir, features):
+    """The 999-rupee counter reads the status-bar template; follow it to $AE10."""
+    return [
+        (r"%org\(\$AC70,5\)", "%org($AE10,5)"),
+        (r"lda \$AC70,y", "lda $AE10,y"),
+    ]
+
+
+# Dungeon map tables in bank 6: per level, the X offset of the map dot, then
+# $21 bytes later the PPU macro list that draws the level's HUD mini-map.
+DUNGEON_DOTS = [0x942A + n * 0xFC for n in range(9)] + \
+               [0x8174, 0x81AD, 0x81E4, 0x8221, 0x825A, 0x829D, 0x82DD, 0x831C, 0x835F]
+
+
+def transform_hud_layout(out, seed):
+    """Move each of the seed's own dungeon mini-maps 20 tiles right, as Redux
+    does for the original dungeons: +$14 on each PPU address, +$A0 on the dot.
+    Every list is parsed and checked before anything changes."""
+    changed = 0
+    for dot in DUNGEON_DOTS:
+        d = file_off(6, dot)
+        out[d] = (seed[d] + 0xA0) & 0xFF
+        o = d + 0x21
+        for _ in range(16):
+            if seed[o] == 0xFF:
+                break
+            hi, lo, ctl = seed[o], seed[o + 1], seed[o + 2]
+            n = ctl & 0x3F or 64
+            size = 1 if ctl & 0x40 else n
+            col = lo & 0x1F
+            span = 1 if ctl & 0x80 else n
+            if hi != 0x20 or not 0x40 <= lo < 0xE0 or col + 0x14 + span > 32:
+                raise RemuxError(f"dungeon mini-map at {where(o)} is not the expected format")
+            out[o + 1] = lo + 0x14
+            o += 3 + size
+            changed += 1
+        else:
+            raise RemuxError(f"dungeon mini-map at {where(d + 0x21)} has no terminator")
+    return changed
 
 
 def automap_extra(work, redux):
@@ -123,7 +217,7 @@ def automap_extra(work, redux):
     return '%org($8C7F,2)\n\tincbin "hearts.bin"\n'
 
 
-def no_edits(work, seed_dir):
+def no_edits(work, seed_dir, features):
     return []
 
 
@@ -134,6 +228,12 @@ def no_extra(work, redux):
 FEATURES = {
     "automap": ("code/gameplay/automap.asm", automap_edits, automap_extra),
     "dungeon-automap": ("code/gameplay/dungeon_automap.asm", no_edits, no_extra),
+    # Redux's HUD: these four go together and in this order (move_maps.asm
+    # rewrites code from the other three and from the automap).
+    "hud-subscreen": ("code/menus/hud_and_subscreen.asm", hud_subscreen_edits, hud_extra),
+    "arrows": ("code/gameplay/arrows.asm", arrows_edits, no_extra),
+    "rupees": ("code/gameplay/rupee.asm", rupee_edits, no_extra),
+    "hud-layout": ("code/gameplay/move_maps.asm", hud_layout_edits, no_extra),
 }
 
 # --------------------------------------------------------------------- glue
@@ -141,11 +241,16 @@ FEATURES = {
 # Persistence. At every power-on and game start the game copies bank 1
 # $A500-$BF6F into RAM $6C90-$7FFF. On a Reloaded seed that copy runs to the
 # end of RAM and erases the saved maps at $7F60-$7F8F. Stop it at $7F50; a
-# stub writes the one byte Reloaded keeps beyond that ($7FFF = $A5), then
-# runs the shortened copy.
+# stub writes the one byte Reloaded keeps beyond that ($7FFF = $A5), copies
+# the RAM routines (below), then runs the shortened copy.
 GLUE = """
-%org($8CF0,1)
+%org($8CB0,1)
 RemuxCopyStub:
+\tldx #$1F\t; RAM routines: ROM bank 1 $9EC4-$9EE3 -> RAM $7FA0-$7FBF
+-\tlda $9EC4,x
+\tsta $7FA0,x
+\tdex
+\tbpl -
 \tlda #$A5
 \tsta $7FFF
 \tjmp $8D00
@@ -158,6 +263,11 @@ RemuxCopyStub:
 %org($E997,7)
 \tdw RemuxCopyStub
 """
+# RAM routines. Redux places small routines in the part of bank 1 the game
+# copies to RAM; Reloaded fills that part, and the mirrored seeds leave no gap
+# big enough. The stub above therefore also copies 32 bytes from free ROM
+# (bank 1 $9EC4) to RAM $7FA0-$7FBF, which nothing else uses: features that
+# need a RAM routine assemble it there (see arrows_edits).
 # Glue writes into Reloaded's own code: (bank, address, seed byte expected).
 GLUE_SITES = [(1, 0x8D31, 0x80), (1, 0x8D37, 0x00), (15, 0xE902, 0x00), (15, 0xE903, 0x8D),
               (15, 0xE997, 0x00), (15, 0xE998, 0x8D)]
@@ -183,6 +293,21 @@ def original_equiv(off):
     return off if bank < 7 else None
 
 
+def group(bad):
+    """Collapse unsafe writes into address ranges, for a readable report."""
+    out, run = [], None
+    for off, why in bad:
+        if run and off <= run[1] + 4 and why == run[2]:
+            run[1] = off
+        else:
+            if run:
+                out.append(run)
+            run = [off, off, why]
+    if run:
+        out.append(run)
+    return [f"{where(a)}-${(int(where(b)[-4:], 16)):04X} ({b - a + 1} bytes): {why}" for a, b, why in out]
+
+
 def edit(text, edits, name):
     for pattern, repl in edits:
         text, n = re.subn(pattern, repl, text, count=1, flags=re.S)
@@ -191,18 +316,24 @@ def edit(text, edits, name):
     return text
 
 
+# Tile blocks in bank 2 that Reloaded copies into banks 8 and up, each with an
+# anchor: distinctive bytes that locate the block in every copy. The blocks are
+# not the same distance apart in the copies, so each needs its own anchor.
+TILE_BLOCKS = [
+    # (block start, block end, anchor address, anchor length)
+    (0x8C7F, 0x8E7F, 0x8D7F, 0x100),   # tiles $50-$6F; anchor tiles $60-$6F
+    (0x8E7F, 0x8F7F, 0x8E7F, 0x20),    # tiles $F2-$FF; anchor tiles $F2-$F3
+]
+
+
 def mirror_tiles(out, seed):
     """Copy tile-graphics writes in bank 2 into Reloaded's extra tile copies.
 
-    Reloaded keeps further copies of the original bank 2 tile set in banks 8
+    Reloaded keeps further copies of the original bank 2 tile sets in banks 8
     and up and loads tiles from those, so a tile written only to bank 2 never
-    reaches the screen. Each copy is located by an anchor: the 256 bytes of
-    tiles $60-$6F (bank 2 $8D7F), which are distinctive. A run written in bank
-    2 is copied to the same distance from each anchor, if the copy still holds
-    the bytes the seed had there."""
-    anchor = file_off(2, 0x8D7F)
-    key = bytes(seed[anchor:anchor + 0x100])
-    copies = [k for k in range(file_off(8, 0x8000), len(seed) - 0x100) if seed[k:k + 0x100] == key]
+    reaches the screen. A run is copied to the same distance from its block's
+    anchor in each copy, if the copy still holds the bytes the seed had there.
+    A tile write outside the known blocks stops the build."""
     lo, hi = file_off(2, 0x8000), file_off(3, 0x8000)
     runs, i = [], lo
     while i < hi:
@@ -214,14 +345,24 @@ def mirror_tiles(out, seed):
             i = j
         else:
             i += 1
-    mirrored = 0
-    for k in copies:
+    copies = mirrored = 0
+    for start, end, anchor, alen in TILE_BLOCKS:
+        s0, e0, a0 = file_off(2, start), file_off(2, end), file_off(2, anchor)
+        key = bytes(seed[a0:a0 + alen])
+        hits = [k for k in range(file_off(8, 0x8000), len(seed) - alen) if seed[k:k + alen] == key]
+        copies = max(copies, len(hits))
         for a, b in runs:
-            t = k + (a - anchor)
-            if file_off(8, 0x8000) <= t and bytes(seed[t:t + b - a]) == bytes(seed[a:b]):
-                out[t:t + b - a] = out[a:b]
-                mirrored += 1
-    return len(copies), mirrored
+            if not s0 <= a < e0:
+                continue
+            for k in hits:
+                t = k + (a - a0)
+                if bytes(seed[t:t + b - a]) == bytes(seed[a:b]):
+                    out[t:t + b - a] = out[a:b]
+                    mirrored += 1
+    stray = [where(a) for a, b in runs
+             if not any(file_off(2, s0) <= a < file_off(2, e0) for s0, e0, _, _ in TILE_BLOCKS)]
+    # Only tile writes are mirrored; other bank 2 writes (code, data) are fine.
+    return copies, mirrored
 
 
 # --------------------------------------------------------------------- main
@@ -250,7 +391,7 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
         for name in features:
             path, make_edits, make_extra = FEATURES[name]
             src = (work / path).read_text()
-            (work / path).write_text(edit(src, make_edits(work, seed_dir), name))
+            (work / path).write_text(edit(src, make_edits(work, seed_dir, features), name))
             includes.append(f"incsrc {path}")
             (work / f"{name}-extra.asm").write_text(make_extra(work, redux))
             includes.append(f"incsrc {name}-extra.asm")
@@ -269,7 +410,7 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
     if len(out) != len(seed):
         raise RemuxError("assembly changed the ROM size")
     glue = {file_off(b, a): v for b, a, v in GLUE_SITES}
-    bad = []
+    bad = []          # (offset, reason)
     for i in range(HDR, len(seed)):
         if out[i] == seed[i]:
             continue
@@ -277,14 +418,16 @@ def remux(redux, asar, features, original_path, seed_dir, out_path):
             continue                                   # free space
         if i in glue:
             if seed[i] != glue[i]:
-                bad.append(f"{where(i)}: glue expected {glue[i]:02X}, seed has {seed[i]:02X}")
+                bad.append((i, f"glue expected {glue[i]:02X}, seed has {seed[i]:02X}"))
             continue
         oe = original_equiv(i)
         if oe is not None and seed[i] == original[oe]:
             continue                                   # untouched by Reloaded
-        bad.append(f"{where(i)}: seed byte {seed[i]:02X} is Reloaded's, not free or original")
+        bad.append((i, "Reloaded's bytes"))
     if bad:
-        raise RemuxError(f"{len(bad)} unsafe writes, first:\n  " + "\n  ".join(bad[:12]))
+        raise RemuxError(f"{len(bad)} unsafe writes:\n  " + "\n  ".join(group(bad)))
+    if "hud-layout" in features:
+        transform_hud_layout(out, seed)
     copies, n = mirror_tiles(out, seed)
     pathlib.Path(out_path).write_bytes(out)
     changed = sum(a != b for a, b in zip(out, seed))

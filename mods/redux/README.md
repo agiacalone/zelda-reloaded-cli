@@ -1,9 +1,9 @@
 # redux (experimental)
 
 > [!WARNING]
-> **Experimental.** Two features so far. The automap is tested on the five preset seeds
-> in FCEUX and on hardware; the dungeon automap is not yet tested in play. Neither is
-> wired into `zelda-rando gen` yet.
+> **Experimental.** The automap, the dungeon automap and Redux's HUD so far. The automap
+> is tested on the five preset seeds in FCEUX and on hardware; the dungeon automap and
+> the HUD are tested in FCEUX only. None is wired into `zelda-rando gen` yet.
 
 **Zelda Remuxed** puts features of [The Legend of Zelda Redux](https://github.com/ShadowOne333/The-Legend-of-Zelda-Redux)
 (ShadowOne333 and contributors, GPL-3) onto a Zelda [reloaded] seed. Redux improves the
@@ -63,6 +63,21 @@ quarter hearts, a map coloured by region, and a blinking position marker. On a s
 and code Reloaded left as in the original, and the routines it calls are unchanged in
 the seeds checked. Rooms appear on the dungeon map as you enter them.
 
+## The HUD
+
+Redux's HUD is four features that go together, in this order: `hud-subscreen`,
+`arrows`, then `automap`, `rupees` and `hud-layout`. Life moves left, the map moves
+right, and the counters become rupees, keys, arrows and bombs (999 rupees, an arrow
+count).
+
+| Problem | Change |
+|---|---|
+| The status-bar template at bank 5 `$AC70`: space Reloaded uses | Moved to `$AE10`; the rupee code that reads it follows |
+| Redux's dungeon mini-maps and map dots are for the original dungeons | Left out; instead each seed's own are moved 20 tiles right (`+$14` on each screen address, `+$A0` on each dot), after a parser checks every list |
+| Link's Level 3 palette tweak | Left out: Reloaded picks its own dungeon palettes |
+| The HUD's icons and hearts are in Redux's whole-bank graphics | Ten tiles are copied, into bank 2 and Reloaded's tile copies; each tile block has its own anchor |
+| The arrow-drop routine runs from RAM, in a part of bank 1 the mirrored seeds fill | A RAM routine area: the power-on stub copies bank 1 `$9EC4` to RAM `$7FA0-$7FBF`, which nothing else uses |
+
 ## Keeping up with Redux
 
 Redux is an active project. `PINS` records the Redux and Asar commits Remuxed is built
@@ -78,7 +93,6 @@ Run it by hand with `mods/redux/upstream-check -n` to print the result without n
 
 ## Next
 
-- Redux's HUD layout (map right, life left) and arrow counter
 - The Redux features that do not touch Reloaded's changes: Copy/Erase, keep hearts on
   load, the bug fixes, Select to toggle the B item, diagonal sword, dungeon music
 - `zelda-rando gen --mod redux:FEATURE`

@@ -180,13 +180,12 @@ def regions(path):
         line = []
         for x0, x1 in REGION_COLS:
             t = tally(rows, int(x0 * sw), int(x1 * sw), int(y0 * sh), int(y1 * sh))
-            # Graveyards are small, so a tenth of the area is enough to name
-            # it. Forest wins near-ties with rock: open ground between trees
-            # makes forests read thinner than they look.
-            if t[GRAVE] > 0.10:
-                kind = GRAVE
-            else:
-                kind = TREE if t[TREE] >= 0.8 * t[ROCK] else ROCK
+            # Forest wins near-ties with rock: open ground between trees makes
+            # forests read thinner than they look. Grey only where graveyard
+            # is the area's main terrain; a corner of graveyard must not turn
+            # a forest grey.
+            tree, rock, grave = t[TREE] / 0.8, t[ROCK], t[GRAVE]
+            kind = max((tree, TREE), (rock, ROCK), (grave, GRAVE))[1]
             line.append(REGION_PALETTE[kind])
         grid.append(line)
     return grid
