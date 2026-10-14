@@ -101,8 +101,9 @@ and pass a new game, a death, a save and a reload in FCEUX:
 | `fix-bait`, `fix-candle`, `fix-cave-timer`, `fix-level1-door`, `fix-keyhole`, `fix-beam`, `fix-leave-cave`, `fix-scroll` | `bugfixes/*.asm` | Redux's eight bug fixes |
 | `sword-draw`, `sword-swing` | `gameplay/sword_*.asm` | The diagonal sword swing |
 
-**On hold:** `copy-erase` (Redux's file screen: names are never saved on a Reloaded
-seed) and `item-toggle` (Select toggles the B item: name registration never finishes).
+**On hold:** `copy-erase` (Redux's file screen: new files work since the RAM move, but
+files made through Reloaded's own screen show as empty) and `item-toggle` (Select
+toggles the B item: name registration never finishes).
 Both build safely; the clash is in behaviour, not bytes. `dungeon-music` is on hold
 too: it passes every FCEUX test, but dungeon music plays wrong on hardware.
 

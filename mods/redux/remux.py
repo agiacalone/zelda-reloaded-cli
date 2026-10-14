@@ -160,6 +160,12 @@ def arrows_edits(work, seed_dir, features):
     ]
 
 
+def copy_erase_edits(work, seed_dir, features):
+    """Redux's Copy/Erase file screen. It copies a file's saved map too:
+    follow the map to its Remuxed address."""
+    return [(r"\$7F60,([xy])", r"$7FC0,\1")]
+
+
 def hud_subscreen_edits(work, seed_dir, features):
     """Redux's HUD and subscreen tweaks."""
     return [
@@ -281,8 +287,10 @@ FEATURES = {
     "sword-swing": ("code/gameplay/sword_swing.asm", no_edits, no_extra),
 }
 # On hold: they build safely but break name registration on a Reloaded seed.
-#   copy-erase  (code/menus/menu_tweaks.asm): the name is never saved; Redux's
-#               file screen clashes with Reloaded's save handling.
+#   copy-erase  (code/menus/menu_tweaks.asm, edits: copy_erase_edits): with the
+#               new RAM layout a new file registers and plays, but files made
+#               through Reloaded's own file screen show as empty, inviting the
+#               player to overwrite them. Needs Reloaded's file-validity check.
 #   item-toggle (code/gameplay/item_toggle.asm): its routine at bank 2 $B7A8
 #               assumes bank 2 is mapped; registration never finishes.
 # On hold: builds safely and passes FCEUX tests, but dungeon music plays wrong
