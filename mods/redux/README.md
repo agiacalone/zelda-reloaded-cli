@@ -48,7 +48,7 @@ quarter hearts, a map coloured by region, and a blinking position marker. On a s
 |---|---|
 | Redux's map picture is of the original Hyrule | `tools/automap.py` draws the seed's own from its spoiler map |
 | Redux's region colours are chosen for the original Hyrule | Each HUD palette area (4 screens across) picks green, grey or brown from the seed's terrain |
-| Picture at bank 5 `$AD00`, blocks at bank 5 `$AF20` and bank 2 `$B000`: space Reloaded uses | Moved to `$B900`, `$BB00` and `$BA00` |
+| Picture at bank 5 `$AD00`, blocks at bank 5 `$AF20` and bank 2 `$B000`: space Reloaded uses | Moved to `$B900`, `$BB00` and `$B100` |
 | RAM `$7F10-$7F29`: Reloaded copies code there at power-on | Moved; see the RAM map below |
 | Two fixed-bank routines; Reloaded leaves only small gaps in bank 15 | One moves to `$FFDB`; the other splits into a bank 6 check and a 13-byte stub at `$FF42` |
 | Redux draws the map into the four tile banks of its overworld animation | Reloaded has one tile bank: draw once, never switch |
@@ -91,8 +91,13 @@ Redux's order, and stops if a feature changes a byte an earlier one wrote, apart
 the overwrites Redux documents (`ALLOWED_OVERWRITES`: `move_maps.asm` and `rupee.asm`
 patch the HUD, arrow and automap code). It caught the item toggle (bank 2
 `$B7A8-$B85B`) overwriting the automap's save code, which the port had placed at
-`$B800`; that broke name registration. The automap block now sits at `$BA00`. The
-check adds a minute or so per build.
+`$B800`; that broke name registration. The automap block now sits at `$B100`. The
+check adds a minute or so per build. Moving the block to `$BA00` then put it on
+Copy/Erase's code, which the check caught on the next build.
+
+Source edits must match exactly once: `edit()` stops the build on a second match.
+Copy/Erase's map copy once read the new address and wrote the old one, because an
+edit changed only the first of two matches.
 
 ### A blind spot of the safety check
 
@@ -112,9 +117,11 @@ and pass a new game, a death, a save and a reload in FCEUX:
 | `fix-bait`, `fix-candle`, `fix-cave-timer`, `fix-level1-door`, `fix-keyhole`, `fix-beam`, `fix-leave-cave`, `fix-scroll` | `bugfixes/*.asm` | Redux's eight bug fixes |
 | `sword-draw`, `sword-swing` | `gameplay/sword_*.asm` | The diagonal sword swing |
 | `item-toggle` | `gameplay/item_toggle.asm` | Select switches the B item instead of pausing |
+| `copy-erase` | `menus/menu_tweaks.asm` | Redux's file screen: copy and erase files; a copy takes the saved map along (one edit: the map's new address) |
 
-**On hold:** `copy-erase` (Redux's file screen: new files work since the RAM move, but
-files made through Reloaded's own screen show as empty).
+Copy/Erase looked broken twice (names never saved; then existing files shown as
+empty). Both times the cause was the automap's bank 2 block sitting on Copy/Erase's
+code (`$BA00-$BE9A`), not Reloaded's save handling. The block now sits at `$B100`.
 Both build safely; the clash is in behaviour, not bytes. `dungeon-music` is on hold
 too: it passes every FCEUX test, but dungeon music plays wrong on hardware.
 
@@ -173,6 +180,6 @@ Run it by hand with `mods/redux/upstream-check -n` to print the result without n
 
 ## Next
 
-- Copy/Erase (on hold, above)
+- Dungeon music (on hold: wrong music in dungeons on hardware)
 - `graphics-overworld`, tested in play
 - `zelda-rando gen --mod redux:FEATURE`

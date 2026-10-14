@@ -53,7 +53,7 @@ def automap_edits(work, seed_dir, features):
         (r'incbin "code/gameplay/automap_tiles.bin"', f'incbin "{picture}"'),
         # Two blocks in space Reloaded uses.
         (r"%org\(\$AF20,5\)", "%org($BB00,5)"),
-        (r"%org\(\$B000,2\)", "%org($BA00,2)"),	# clear of item-toggle ($B7A8-$B85B)
+        (r"%org\(\$B000,2\)", "%org($B100,2)"),	# clear of item-toggle ($B7A8-$B85B) and copy-erase ($BA00-$BE9A)
         # RAM. Reloaded copies code into $7F10-$7F25 at power-on, and its
         # graphics streamer (bank 3 $BA38) stages 64-byte chunks at
         # $7F40-$7F83 whenever a room loads new enemy or NPC graphics.
@@ -163,7 +163,8 @@ def arrows_edits(work, seed_dir, features):
 def copy_erase_edits(work, seed_dir, features):
     """Redux's Copy/Erase file screen. It copies a file's saved map too:
     follow the map to its Remuxed address."""
-    return [(r"\$7F60,([xy])", r"$7FC0,\1")]
+    return [(r"lda \$7F60,x(\t\t; Copy automap data to temp save)", r"lda $7FC0,x\1"),
+            (r"sta \$7F60,y", r"sta $7FC0,y")]
 
 
 def hud_subscreen_edits(work, seed_dir, features):
@@ -268,6 +269,7 @@ FEATURES = {
     "automap": ("code/gameplay/automap.asm", automap_edits, automap_extra),
     "dungeon-automap": ("code/gameplay/dungeon_automap.asm", no_edits, no_extra),
     "item-toggle": ("code/gameplay/item_toggle.asm", no_edits, no_extra),
+    "copy-erase": ("code/menus/menu_tweaks.asm", copy_erase_edits, no_extra),
     # Redux's HUD: these four go together and in this order (move_maps.asm
     # rewrites code from the other three and from the automap).
     "hud-subscreen": ("code/menus/hud_and_subscreen.asm", hud_subscreen_edits, hud_extra),
@@ -288,10 +290,6 @@ FEATURES = {
     "sword-swing": ("code/gameplay/sword_swing.asm", no_edits, no_extra),
 }
 # On hold: they build safely but break name registration on a Reloaded seed.
-#   copy-erase  (code/menus/menu_tweaks.asm, edits: copy_erase_edits): with the
-#               new RAM layout a new file registers and plays, but files made
-#               through Reloaded's own file screen show as empty, inviting the
-#               player to overwrite them. Needs Reloaded's file-validity check.
 # On hold: builds safely and passes FCEUX tests, but dungeon music plays wrong
 # on hardware (heard on the Steam Deck, 2026-10-14).
 #   dungeon-music (code/music/dungeon_music.asm): hooks the music sequencer in
@@ -395,10 +393,14 @@ def group(bad):
 
 
 def edit(text, edits, name):
+    """Apply source edits. Each pattern must match exactly once: a second match
+    would be left unchanged (Copy/Erase's map copy once read the new address
+    and wrote the old one this way)."""
     for pattern, repl in edits:
-        text, n = re.subn(pattern, repl, text, count=1, flags=re.S)
+        n = len(re.findall(pattern, text, flags=re.S))
         if n != 1:
-            raise RemuxError(f"{name}: source edit did not match: {pattern[:60]}")
+            raise RemuxError(f"{name}: source edit matched {n} times (needs 1): {pattern[:60]}")
+        text = re.sub(pattern, repl, text, count=1, flags=re.S)
     return text
 
 
