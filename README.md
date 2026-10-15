@@ -16,6 +16,29 @@ Redux only patches the original ROM, and a Reloaded seed is a different ROM, so 
 you had to choose one. Zelda Remuxed runs Reloaded headless on Linux, then assembles
 Redux's own source code onto each seed, one feature at a time.
 
+<table>
+<tr>
+<td><img src="docs/images/03-overworld.png" width="256" alt="Overworld with Redux's HUD: life on the left, the seed's own map on the right"></td>
+<td><img src="docs/images/07-revealed-map.png" width="256" alt="The whole overworld map revealed, coloured by region"></td>
+<td><img src="docs/images/06-dungeon.png" width="256" alt="A Level 7 room with Redux's dungeon art and the dungeon map"></td>
+</tr>
+<tr>
+<td align="center">The HUD and the seed's own map</td>
+<td align="center">A map drawn from each seed, coloured by region</td>
+<td align="center">Redux's dungeon art and dungeon map</td>
+</tr>
+<tr>
+<td><img src="docs/images/02-file-select.png" width="256" alt="Redux's file screen with Copy and Erase, showing Reloaded's seed hash"></td>
+<td><img src="docs/images/04-inventory.png" width="256" alt="The inventory screen: Select switches the B item, Up+A saves"></td>
+<td><img src="docs/images/05-save-menu.png" width="256" alt="The Continue, Save, Retry menu"></td>
+</tr>
+<tr>
+<td align="center">Copy and erase files; the seed hash on top</td>
+<td align="center">Select switches the B item; Up+A saves</td>
+<td align="center">Saving keeps your map</td>
+</tr>
+</table>
+
 New here? Start with [docs/getting-started.md](docs/getting-started.md) (about 30 minutes).
 Something broken? See [docs/troubleshooting.md](docs/troubleshooting.md).
 
