@@ -184,6 +184,11 @@ reference seed, and posts to ntfy only when something changed:
 On reason it runs weekly from the user timer `remuxed-upstream.timer` (Monday 06:00).
 Run it by hand with `mods/redux/upstream-check -n` to print the result without notifying.
 
+The same timer also runs `metroid-watch`. It fetches [Metroid Redux](https://github.com/ShadowOne333/Metroid-Redux)
+and notifies when it has new commits, at high priority if automap code appears. Metroid Redux
+already carries Metroid + Saving's minimap; a full automap is the step a Metroid Remuxed waits
+on. Run it by hand with `mods/redux/metroid-watch -n`.
+
 ## Next
 
 - `graphics-overworld`, tested in play
